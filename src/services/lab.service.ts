@@ -3,6 +3,9 @@
 import Laboratory from '@moleculer/lab';
 import { Service as MoleculerService } from "moleculer";
 import { Service } from "moleculer-decorators";
+import { config } from 'dotenv';
+
+config();
 
 @Service({
     name: "lab",

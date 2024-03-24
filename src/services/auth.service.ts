@@ -158,6 +158,7 @@ export default class AuthService extends MoleculerService {
         // Create a database
         this.db = new Level(dbPath, { valueEncoding: 'json' });
 
+
     }
 
 }

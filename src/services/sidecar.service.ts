@@ -142,10 +142,6 @@ class SidecarService extends MoleculerService {
                 headers.set("authorization", "Bearer " + gateway.auth.accessToken);
             } else if ('username' in gateway.auth && 'password' in gateway.auth) {
                 headers.set("authorization", "Basic " + Buffer.from(gateway.auth.username + ':' + gateway.auth.password).toString('base64'));
-            } else {
-                throw new Errors.MoleculerError(
-                    `Incorrect gateway auth object`
-                );
             }
         }
         
@@ -367,7 +363,7 @@ class SidecarService extends MoleculerService {
 
         if (originalSchema.started) { 
             schema.started = function handler() {
-                self.sendRequestToNode(ctx, node, "lifecycle", {
+                return self.sendRequestToNode(ctx, node, "lifecycle", {
                     event: {
                         name: "started",
                         handler: originalSchema.started
@@ -378,7 +374,7 @@ class SidecarService extends MoleculerService {
 
         if (originalSchema.stopped) {
             schema.stopped = function handler() {
-                self.sendRequestToNode(ctx, node, "lifecycle", {
+                return self.sendRequestToNode(ctx, node, "lifecycle", {
                     event: {
                         name: "stopped",
                         handler: originalSchema.stopped
@@ -392,7 +388,7 @@ class SidecarService extends MoleculerService {
             for (const action of originalSchema.actions) {
                 let newAction = _.cloneDeep(action);
                 newAction.handler = async function handler(ctx: Context) {
-                    self.sendRequestToNode(ctx, node, "request", {
+                    return self.sendRequestToNode(ctx, node, "request", {
                         ...self.extractContext(ctx),
                         action: {
                             name: action.name,
@@ -411,7 +407,7 @@ class SidecarService extends MoleculerService {
                 let newEvent = _.cloneDeep(event);
                 newEvent.serviceName = schema.name;
                 newEvent.handler = async function handler(ctx: Context) {
-                    self.sendRequestToNode(ctx, node, "event", {
+                    return self.sendRequestToNode(ctx, node, "event", {
                         ...self.extractContext(ctx),
                         event: {
                             name: event.name,
@@ -888,10 +884,6 @@ class SidecarService extends MoleculerService {
                 headers.set("authorization", "Bearer " + gateway.auth.accessToken);
             } else if ('username' in gateway.auth && 'password' in gateway.auth) {
                 headers.set("authorization", "Basic " + Buffer.from(gateway.auth.username + ':' + gateway.auth.password).toString('base64'));
-            } else {
-                throw new Errors.MoleculerError(
-                    `Incorrect gateway auth object`
-                );
             }
         }
 
