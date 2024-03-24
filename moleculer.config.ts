@@ -29,9 +29,9 @@ import { Errors } from "moleculer";
  */
 const brokerConfig: BrokerOptions = {
   // Namespace of nodes to segment your nodes on the same network.
-  namespace: "local",
+  namespace: "",
   // Unique node identifier. Must be unique in a namespace.
-  nodeID: null,
+  nodeID: "SIDECAR.V2",
   // Custom metadata store. Store here what you want. Accessing: `this.broker.metadata`
   metadata: {},
 
@@ -60,7 +60,7 @@ const brokerConfig: BrokerOptions = {
   // More info: https://moleculer.services/docs/0.14/networking.html
   // Note: During the development, you don't need to define it because all services will be loaded locally.
   // In production you can set it via `TRANSPORTER=nats://localhost:4222` environment variable.
-  transporter: "TCP",
+  //transporter: "TCP", // "nats://192.168.5.243:4222", //"nats://localhost:4222",
 
   // Define a cacher.
   // More info: https://moleculer.services/docs/0.14/caching.html
@@ -69,7 +69,7 @@ const brokerConfig: BrokerOptions = {
   // Define a serializer.
   // Available values: "JSON", "Avro", "ProtoBuf", "MsgPack", "Notepack", "Thrift".
   // More info: https://moleculer.services/docs/0.14/networking.html#Serialization
-  serializer: "JSON",
+  serializer: "CBOR",
 
   // Number of milliseconds to wait before reject a request with a RequestTimeout error. Disabled: 0
   requestTimeout: 10 * 1000,

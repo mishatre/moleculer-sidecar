@@ -3,8 +3,10 @@
   "version": "0.0.1",
   "description": "Moleculer integration for external services",
   "main": "index.ts",
+  "type": "module",
   "scripts": {
-    "dev": "tsx ./node_modules/moleculer/bin/moleculer-runner.mjs --config moleculer.config.ts --hot ./src/*.service.ts",
+    "start": "tsx ./src/index.ts --config ./moleculer.config.ts --hot --envfile .env",
+    "dev": "tsx ./node_modules/moleculer/bin/moleculer-runner.mjs --config moleculer.config.ts --hot ./src/services/*.service.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "M.Tregub",
@@ -20,10 +22,15 @@
   },
   "dependencies": {
     "@moleculer/lab": "^0.6.4",
+    "cbor-extract": "^2.2.0",
+    "cbor-x": "^1.5.8",
+    "dotenv": "^16.4.5",
     "kleur": "^4.1.5",
+    "level": "^8.0.1",
     "lodash": "^4.17.21",
     "moleculer": "^0.14.32",
     "moleculer-web": "^0.10.7",
+    "nats": "^2.19.0",
     "querystring": "^0.2.1",
     "xml2js": "^0.6.2"
   }
