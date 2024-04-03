@@ -1,24 +1,23 @@
-
-import { Context, Service as MoleculerService, Errors } from 'moleculer';
-import { Service, Method, Action } from 'moleculer-decorators';
+import { Context, Errors, Service as MoleculerService } from 'moleculer';
+import { Action, Method, Service } from 'moleculer-decorators';
 
 @Service({
-    name: "user",
+    name: 'user',
 
-    settings: {
-    }
+    settings: {},
 })
 export default class UserService extends MoleculerService {
-
     @Action({
-        name: "createKeyPair"
+        name: 'createKeyPair',
     })
     async createKeyPair(ctx: Context) {
-        const { accessKey, secretKey } = await ctx.call<{ accessKey: string; secretKey: string }>("$auth.generateKeys");
-        await ctx.call("$auth.storeKeyPair", { accessKey, secretKey });
+        const { accessKey, secretKey } = await ctx.call<{ accessKey: string; secretKey: string }>(
+            '$auth.generateKeys',
+        );
+        await ctx.call('$auth.storeKeyPair', { accessKey, secretKey });
         return {
             accessKey,
-            secretKey
+            secretKey,
         };
     }
 }

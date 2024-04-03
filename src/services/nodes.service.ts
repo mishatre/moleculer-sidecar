@@ -1,36 +1,49 @@
-
-import { Context, Service as MoleculerService, ServiceSchema } from 'moleculer';
-import { Service, Method, Action } from 'moleculer-decorators';
-import { Level } from 'level';
 import { AbstractSublevel } from 'abstract-level';
-import { getRootDir } from '../uitls/index.js';
-import path from 'path';
 import { mkdirSync } from 'fs';
+import { Level } from 'level';
+import { Context, Service as MoleculerService, ServiceSchema } from 'moleculer';
+import { Action, Method, Service } from 'moleculer-decorators';
+import path from 'path';
+
+import { getRootDir } from '../uitls/index.js';
 import { SidecarNode } from './sidecar.service.js';
 
 @Service({
-    name: "$nodes",
+    name: '$nodes',
 
-    settings: {
-    }
+    settings: {},
 })
 export default class NodesService extends MoleculerService {
-
     private db!: Level<string, SidecarNode>;
-    private nodeIds!: AbstractSublevel<Level<string, SidecarNode>, string | Buffer | Uint8Array, string, string>;
-    private namespaces!: AbstractSublevel<Level<string, SidecarNode>, string | Buffer | Uint8Array, string, string>;
-    private services!: AbstractSublevel<Level<string, SidecarNode>, string | Buffer | Uint8Array, string, ServiceSchema[]>;
+    private nodeIds!: AbstractSublevel<
+        Level<string, SidecarNode>,
+        string | Buffer | Uint8Array,
+        string,
+        string
+    >;
+    private namespaces!: AbstractSublevel<
+        Level<string, SidecarNode>,
+        string | Buffer | Uint8Array,
+        string,
+        string
+    >;
+    private services!: AbstractSublevel<
+        Level<string, SidecarNode>,
+        string | Buffer | Uint8Array,
+        string,
+        ServiceSchema[]
+    >;
 
     @Action({
         name: 'hasNode',
         params: {
-            nodeID: "string"
-        }
+            nodeID: 'string',
+        },
     })
     public async hasNode(ctx: Context<{ nodeID: string }>) {
         try {
             await this.nodeIds.get(ctx.params.nodeID);
-        } catch(error: any) {
+        } catch (error: any) {
             if ('code' in error && error.code === 'LEVEL_NOT_FOUND') {
                 return false;
             } else {
@@ -43,13 +56,13 @@ export default class NodesService extends MoleculerService {
     @Action({
         name: 'hasNamespace',
         params: {
-            namespace: "string"
-        }
+            namespace: 'string',
+        },
     })
     public async hasNamespace(ctx: Context<{ namespace: string }>) {
         try {
             await this.namespaces.get(ctx.params.namespace);
-        } catch(error: any) {
+        } catch (error: any) {
             if ('code' in error && error.code === 'LEVEL_NOT_FOUND') {
                 return false;
             } else {
@@ -62,8 +75,8 @@ export default class NodesService extends MoleculerService {
     @Action({
         name: 'getNode',
         params: {
-            nodeID: "string"
-        }
+            nodeID: 'string',
+        },
     })
     public async getNode(ctx: Context<{ nodeID: string }>) {
         const { nodeID } = ctx.params;
@@ -73,23 +86,25 @@ export default class NodesService extends MoleculerService {
     @Action({
         name: 'addNode',
         params: {
-            node: "any"
-        }
+            node: 'any',
+        },
     })
     public async addNode(ctx: Context<{ node: SidecarNode }>) {
         const node = ctx.params.node;
         try {
-            const items = [{
-                type: 'put',
-                key: node.nodeID,
-                value: node,
-            },
-            {
-                type: 'put',
-                sublevel: this.nodeIds,
-                key: node.nodeID,
-                value: '' as any,
-            }];
+            const items = [
+                {
+                    type: 'put',
+                    key: node.nodeID,
+                    value: node,
+                },
+                {
+                    type: 'put',
+                    sublevel: this.nodeIds,
+                    key: node.nodeID,
+                    value: '' as any,
+                },
+            ];
             if (node.servicePublication?.namespace) {
                 items.push({
                     type: 'put',
@@ -100,8 +115,7 @@ export default class NodesService extends MoleculerService {
             }
 
             await this.db.batch(items as any);
-
-        } catch(error: any) {
+        } catch (error: any) {
             if ('code' in error && error.code === 'LEVEL_NOT_FOUND') {
                 return false;
             } else {
@@ -114,8 +128,8 @@ export default class NodesService extends MoleculerService {
     @Action({
         name: 'removeNode',
         params: {
-            nodeID: "string"
-        }
+            nodeID: 'string',
+        },
     })
     public async removeNode(ctx: Context<{ nodeID: string }>) {
         const { nodeID } = ctx.params;
@@ -126,7 +140,7 @@ export default class NodesService extends MoleculerService {
         if (nodeSerivces) {
             try {
                 await this.services.del(nodeID);
-            } catch(error: any) {
+            } catch (error: any) {
                 if ('code' in error && error.code === 'LEVEL_NOT_FOUND') {
                 } else {
                     throw error;
@@ -135,10 +149,9 @@ export default class NodesService extends MoleculerService {
         }
 
         if (!node) {
-
             try {
                 await this.nodeIds.del(nodeID);
-            } catch(error: any) {
+            } catch (error: any) {
                 if ('code' in error && error.code === 'LEVEL_NOT_FOUND') {
                 } else {
                     throw error;
@@ -149,16 +162,17 @@ export default class NodesService extends MoleculerService {
         }
 
         try {
-
-            const items = [{
-                type: 'del',
-                key: node.nodeID,
-            },
-            {
-                type: 'del',
-                sublevel: this.nodeIds,
-                key: node.nodeID,
-            }];
+            const items = [
+                {
+                    type: 'del',
+                    key: node.nodeID,
+                },
+                {
+                    type: 'del',
+                    sublevel: this.nodeIds,
+                    key: node.nodeID,
+                },
+            ];
             if (node.servicePublication?.namespace) {
                 items.push({
                     type: 'del',
@@ -167,7 +181,7 @@ export default class NodesService extends MoleculerService {
                 });
             }
             await this.db.batch(items as any);
-        } catch(error: any) {
+        } catch (error: any) {
             if ('code' in error && error.code === 'LEVEL_NOT_FOUND') {
                 return false;
             } else {
@@ -180,20 +194,20 @@ export default class NodesService extends MoleculerService {
     @Action({
         name: 'addService',
         params: {
-            nodeID: "string",
-            service: "object"
-        }
+            nodeID: 'string',
+            service: 'object',
+        },
     })
-    public async addService(ctx: Context<{ nodeID: string, service: ServiceSchema }>) {
+    public async addService(ctx: Context<{ nodeID: string; service: ServiceSchema }>) {
         const { nodeID, service } = ctx.params;
-        const nodeServices = await this.getServicesByNodeID(nodeID) || [];
-        if (nodeServices?.find(n => n.name === service.name && n.version === service.version)) {
+        const nodeServices = (await this.getServicesByNodeID(nodeID)) || [];
+        if (nodeServices?.find((n) => n.name === service.name && n.version === service.version)) {
             return false;
         }
         nodeServices?.push(service);
         try {
             await this.services.put(nodeID, nodeServices);
-        } catch(error: any) {
+        } catch (error: any) {
             if ('code' in error && error.code === 'LEVEL_NOT_FOUND') {
                 return false;
             } else {
@@ -206,22 +220,31 @@ export default class NodesService extends MoleculerService {
     @Action({
         name: 'removeService',
         params: {
-            nodeID: "string",
-            serviceName: "string",
-            version: ["string|optional", "number|optional"]
-        }
+            nodeID: 'string',
+            serviceName: 'string',
+            version: ['string|optional', 'number|optional'],
+        },
     })
-    public async removeService(ctx: Context<{ nodeID: string, serviceName: string, version?: string | number }>) {
+    public async removeService(
+        ctx: Context<{ nodeID: string; serviceName: string; version?: string | number }>,
+    ) {
         const { nodeID, serviceName, version } = ctx.params;
-        const nodeServices = await this.getServicesByNodeID(nodeID) || [];
+        const nodeServices = (await this.getServicesByNodeID(nodeID)) || [];
         console.log(nodeServices, serviceName, version);
-        if (!nodeServices?.find(n => n.name === serviceName && (!version || n.version == version))) {
+        if (
+            !nodeServices?.find((n) => n.name === serviceName && (!version || n.version == version))
+        ) {
             return true;
         }
-        nodeServices?.splice(nodeServices?.findIndex(n => n.name === serviceName && (!version || n.version === version)), 1);
+        nodeServices?.splice(
+            nodeServices?.findIndex(
+                (n) => n.name === serviceName && (!version || n.version === version),
+            ),
+            1,
+        );
         try {
             await this.services.put(nodeID, nodeServices);
-        } catch(error: any) {
+        } catch (error: any) {
             if ('code' in error && error.code === 'LEVEL_NOT_FOUND') {
                 return false;
             } else {
@@ -232,8 +255,8 @@ export default class NodesService extends MoleculerService {
     }
 
     @Action({
-        name: "getServices",
-        params: {}
+        name: 'getServices',
+        params: {},
     })
     public async getServices(ctx: Context) {
         const services = {} as { [key: string]: ServiceSchema[] };
@@ -245,10 +268,10 @@ export default class NodesService extends MoleculerService {
     }
 
     @Action({
-        name: "getNodeServices",
+        name: 'getNodeServices',
         params: {
-            nodeID: "string"
-        }
+            nodeID: 'string',
+        },
     })
     public async getNodeServices(ctx: Context<{ nodeID: string }>) {
         const { nodeID } = ctx.params;
@@ -259,7 +282,7 @@ export default class NodesService extends MoleculerService {
     private async getSavedNode(nodeID: string) {
         try {
             return await this.db.get(nodeID);
-        } catch(error: any) {
+        } catch (error: any) {
             if ('code' in error && error.code === 'LEVEL_NOT_FOUND') {
                 return undefined;
             } else {
@@ -272,7 +295,7 @@ export default class NodesService extends MoleculerService {
     private async getServicesByNodeID(nodeID: string) {
         try {
             return await this.services.get(nodeID);
-        } catch(error: any) {
+        } catch (error: any) {
             if ('code' in error && error.code === 'LEVEL_NOT_FOUND') {
                 return [];
             } else {
@@ -282,7 +305,6 @@ export default class NodesService extends MoleculerService {
     }
 
     protected started() {
-
         const dbPath = path.join(process.env.DATA ?? path.join(getRootDir(), 'data'), 'nodes');
         mkdirSync(dbPath, { recursive: true });
 
@@ -291,12 +313,12 @@ export default class NodesService extends MoleculerService {
 
         this.nodeIds = this.db.sublevel('nodes');
         this.namespaces = this.db.sublevel('namespaces');
-        this.services = this.db.sublevel<string, ServiceSchema[]>('services', { valueEncoding: 'json' });
+        this.services = this.db.sublevel<string, ServiceSchema[]>('services', {
+            valueEncoding: 'json',
+        });
 
         // this.db.clear();
         // this.namespaces.clear();
         // this.services.clear();
-
     }
-
 }

@@ -1,6 +1,6 @@
-import { IncomingRequest } from "moleculer-web";
 import crypto, { BinaryLike, KeyObject } from 'crypto';
-import querystring, { ParsedUrlQuery } from 'querystring';
+import { IncomingRequest } from 'moleculer-web';
+import querystring, { ParsedUrlQuery } from 'node:querystring';
 
 enum Headers {
     'Authorization' = 'authorization',
@@ -9,7 +9,7 @@ enum Headers {
     'XAmzExpires' = 'x-amz-expires',
 }
 
-type PartialRequest = Pick<IncomingRequest, 'originalUrl'|'method'|'headers'>;
+type PartialRequest = Pick<IncomingRequest, 'originalUrl' | 'method' | 'headers'>;
 
 type SigV4Message = {
     accessKey: string;
@@ -26,12 +26,13 @@ type SigV4Message = {
     signedHeaders: string;
     xAmzDate: string;
     xAmzExpires: number;
-}
+};
 
-type ParseReqSigV4Response = { success: false, error: string, message: undefined } | { success: true, error: null, message: SigV4Message };
+type ParseReqSigV4Response =
+    | { success: false; error: string; message: undefined }
+    | { success: true; error: null; message: SigV4Message };
 
 export function parseReqSigV4(req: PartialRequest): ParseReqSigV4Response {
-
     // Get the AWS signature v4 headers from the request
     const authorization = req.headers[Headers.Authorization];
     const xAmzDate = req.headers[Headers.XAmzDate] as string;
@@ -45,8 +46,8 @@ export function parseReqSigV4(req: PartialRequest): ParseReqSigV4Response {
     if (!authorization || !xAmzDate) {
         return {
             success: false,
-            error: "MISSING_HEADERS",
-            message: undefined
+            error: 'MISSING_HEADERS',
+            message: undefined,
         };
     }
 
@@ -56,8 +57,8 @@ export function parseReqSigV4(req: PartialRequest): ParseReqSigV4Response {
     if (expired) {
         return {
             success: false,
-            error: "EXPIRED",
-            message: undefined
+            error: 'EXPIRED',
+            message: undefined,
         };
     }
 
@@ -68,9 +69,9 @@ export function parseReqSigV4(req: PartialRequest): ParseReqSigV4Response {
     const [accessKey, date, region, service, requestType] = credential.split('/');
     const incommingHeaders = req.headers;
     const canonicalHeaders = signedHeaders
-      .split(';')
-      .map((key) => key.toLowerCase() + ':' + trimAll(incommingHeaders[key]))
-      .join('\n');
+        .split(';')
+        .map((key) => key.toLowerCase() + ':' + trimAll(incommingHeaders[key]))
+        .join('\n');
 
     if (
         !accessKey ||
@@ -87,8 +88,8 @@ export function parseReqSigV4(req: PartialRequest): ParseReqSigV4Response {
     ) {
         return {
             success: false,
-            error: "SIGNATURE_MISMATCH_1",
-            message: undefined
+            error: 'SIGNATURE_MISMATCH_1',
+            message: undefined,
         };
     }
 
@@ -112,9 +113,8 @@ export function parseReqSigV4(req: PartialRequest): ParseReqSigV4Response {
     return {
         success: true,
         error: null,
-        message
-    }
-
+        message,
+    };
 }
 
 export function validateMessage(message: any, secretKey: string) {
@@ -123,15 +123,14 @@ export function validateMessage(message: any, secretKey: string) {
     if (calculatedAuthorization !== message.authorization) {
         return {
             valid: false,
-            error: "SIGNATURE_MISMATCH_2"
+            error: 'SIGNATURE_MISMATCH_2',
         };
     }
 
     return {
         valid: true,
         error: null,
-    }
-
+    };
 }
 
 function createAuthHeader(message: any, secretKey: string) {
@@ -144,7 +143,7 @@ function createAuthHeader(message: any, secretKey: string) {
 
 function credentialString(message: any) {
     return [message?.date, message?.region, message?.service, message?.requestType].join('/');
-};
+}
 
 function signature(message: any, secretKey: string) {
     const hmacDate = hmac('AWS4' + secretKey, message.date);
@@ -152,13 +151,16 @@ function signature(message: any, secretKey: string) {
     const hmacService = hmac(hmacRegion, message.service);
     const hmacCredentials = hmac(hmacService, 'aws4_request');
     return hmacHex(hmacCredentials, stringToSign(message));
-};
+}
 
 function stringToSign(message: any) {
-    return ['AWS4-HMAC-SHA256', message.xAmzDate, credentialString(message), hash(canonicalString(message))].join(
-      '\n',
-    );
-};
+    return [
+        'AWS4-HMAC-SHA256',
+        message.xAmzDate,
+        credentialString(message),
+        hash(canonicalString(message)),
+    ].join('\n');
+}
 
 function canonicalString(message: any) {
     return [
@@ -169,10 +171,9 @@ function canonicalString(message: any) {
         message.signedHeaders,
         message.bodyHash,
     ].join('\n');
-};
+}
 
 function canonicalQueryString(message: any) {
-
     if (!message.query) {
         return '';
     }
@@ -190,33 +191,34 @@ function canonicalQueryString(message: any) {
         .sort()
         .forEach((key) => {
             if (!Array.isArray(reducedQuery[key])) {
-                encodedQueryPieces.push(key + '=' + encodeRfc3986Full((reducedQuery[key] as string) ?? ''));
+                encodedQueryPieces.push(
+                    key + '=' + encodeRfc3986Full((reducedQuery[key] as string) ?? ''),
+                );
             } else {
                 (reducedQuery[key] as string[])
-                ?.map(encodeRfc3986Full)
-                ?.sort()
-                ?.forEach((val: string) => {
-                    encodedQueryPieces.push(key + '=' + val);
-                });
+                    ?.map(encodeRfc3986Full)
+                    ?.sort()
+                    ?.forEach((val: string) => {
+                        encodedQueryPieces.push(key + '=' + val);
+                    });
             }
         });
     return encodedQueryPieces.join('&');
-  };
+}
 
 function canonicalURI(message: any) {
-
     let pathStr = decodeURIComponent(message.path);
     if (pathStr !== '/') {
         pathStr = pathStr.replace(/\/{2,}/g, '/');
         pathStr = pathStr
             .split('/')
             .reduce((_path: string[], piece: any) => {
-            if (piece === '..') {
-                _path.pop();
-            } else if (piece !== '.') {
-                _path.push(encodeRfc3986Full(piece));
-            }
-            return _path;
+                if (piece === '..') {
+                    _path.pop();
+                } else if (piece !== '.') {
+                    _path.push(encodeRfc3986Full(piece));
+                }
+                return _path;
             }, [])
             .join('/');
         if (pathStr[0] !== '/') {
@@ -224,42 +226,48 @@ function canonicalURI(message: any) {
         }
     }
     return pathStr;
-};
+}
 
 const hash = (data: string) => crypto.createHash('sha256').update(data, 'utf8').digest('hex');
-const trimAll = (header: string | string[] | undefined) => header?.toString().trim().replace(/\s+/g, ' ');
-const encodeRfc3986 = (urlEncodedString: string) => urlEncodedString.replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+const trimAll = (header: string | string[] | undefined) =>
+    header?.toString().trim().replace(/\s+/g, ' ');
+const encodeRfc3986 = (urlEncodedString: string) =>
+    urlEncodedString.replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 const encodeRfc3986Full = (str: string) => encodeRfc3986(encodeURIComponent(str));
-const hmacHex = (secretKey: BinaryLike | KeyObject, data: string) => crypto.createHmac('sha256', secretKey).update(data, 'utf8').digest('hex');
-const hmac = (secretKey: BinaryLike | KeyObject, data: string) => crypto.createHmac('sha256', secretKey).update(data, 'utf8').digest();
+const hmacHex = (secretKey: BinaryLike | KeyObject, data: string) =>
+    crypto.createHmac('sha256', secretKey).update(data, 'utf8').digest('hex');
+const hmac = (secretKey: BinaryLike | KeyObject, data: string) =>
+    crypto.createHmac('sha256', secretKey).update(data, 'utf8').digest();
 const expires = (dateTime: string, expires: number | undefined): boolean => {
-
     if (!expires) {
         return false;
     }
-  
-    const stringISO8601 = dateTime.replace(/^(.{4})(.{2})(.{2})T(.{2})(.{2})(.{2})Z$/, '$1-$2-$3T$4:$5:$6Z');
+
+    const stringISO8601 = dateTime.replace(
+        /^(.{4})(.{2})(.{2})T(.{2})(.{2})(.{2})Z$/,
+        '$1-$2-$3T$4:$5:$6Z',
+    );
     const localDateTime = new Date(stringISO8601);
     localDateTime.setSeconds(localDateTime.getSeconds(), expires);
-  
+
     return localDateTime < new Date();
 };
 const parsePath = (url: string) => {
     let path = url || '/';
     if (/[^0-9A-Za-z;,/?:@&=+$\-_.!~*'()#%]/.test(path)) {
-      path = encodeURI(decodeURI(path));
+        path = encodeURI(decodeURI(path));
     }
 
     const queryIx = path.indexOf('?');
     let query;
 
     if (queryIx >= 0) {
-      query = querystring.parse(path.slice(queryIx + 1));
-      path = path.slice(0, queryIx);
+        query = querystring.parse(path.slice(queryIx + 1));
+        path = path.slice(0, queryIx);
     }
 
     return {
-      path,
-      query,
+        path,
+        query,
     };
 };

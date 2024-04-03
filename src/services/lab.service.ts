@@ -1,19 +1,18 @@
-
 // @ts-ignore
 import Laboratory from '@moleculer/lab';
-import { Service as MoleculerService } from "moleculer";
-import { Service } from "moleculer-decorators";
 import { config } from 'dotenv';
+import { Service as MoleculerService } from 'moleculer';
+import { Service } from 'moleculer-decorators';
 
 config();
 
 @Service({
-    name: "lab",
+    name: 'lab',
     mixins: [Laboratory.AgentService],
 
     settings: {
-        token: "secret",
-        apiKey: process.env.LABORATORY_API_KEY
-    }
+        token: 'secret',
+        apiKey: process.env.LABORATORY_API_KEY,
+    },
 })
 export default class LabService extends MoleculerService {}

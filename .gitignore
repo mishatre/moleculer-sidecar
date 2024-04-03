@@ -3,5 +3,7 @@ node_modules
 .env
 
 data
+build
+dist
 
 .DS_Store
