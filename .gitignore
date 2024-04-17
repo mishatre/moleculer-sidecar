@@ -7,3 +7,5 @@ build
 dist
 
 .DS_Store
+certs/*.crt
+certs/*.key

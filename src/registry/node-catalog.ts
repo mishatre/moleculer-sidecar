@@ -1,9 +1,8 @@
-import kleur from 'kleur';
 import _ from 'lodash';
-import { Context, LoggerInstance, ServiceBroker, ServiceSchema } from 'moleculer';
+import { LoggerInstance, ServiceBroker } from 'moleculer';
 
-import { Gateway } from '../gateway';
-import { Node, NodeInfo } from './node';
+import { InfoPayload } from '../packet';
+import { Node } from './node';
 import SidecarRegistry from './registry';
 
 export class NodeCatalog {
@@ -12,12 +11,12 @@ export class NodeCatalog {
     private logger: LoggerInstance;
     private nodes: Map<string, Node>;
 
-    private onNodeUpdate: (nodeID: string, node: Node) => void;
+    private onNodeUpdate: (nodeID: string, node: Node | undefined) => void;
 
     constructor(
         registry: SidecarRegistry,
         broker: ServiceBroker,
-        onNodeUpdate: (nodeID: string, node: Node) => void,
+        onNodeUpdate: (nodeID: string, node: Node | undefined) => void,
     ) {
         this.registry = registry;
         this.broker = broker;
@@ -46,8 +45,10 @@ export class NodeCatalog {
      * @returns
      * @memberof NodeCatalog
      */
-    private delete(id: string) {
-        return this.nodes.delete(id);
+    public delete(id: string) {
+        this.nodes.delete(id);
+        this.onNodeUpdate(id, undefined);
+        return;
     }
 
     /**
@@ -85,7 +86,9 @@ export class NodeCatalog {
      * @param {any} payload
      * @memberof NodeCatalog
      */
-    processNodeInfo(nodeID: string, nodeInfo: NodeInfo) {
+    async processNodeInfo(payload: InfoPayload) {
+        const nodeID = payload.sender;
+
         let node = this.get(nodeID);
         let isNew = false;
         let isReconnected = false;
@@ -101,11 +104,11 @@ export class NodeCatalog {
             node.offlineSince = null;
         }
 
-        const needRegister = node.update(nodeInfo, isReconnected);
+        const needRegister = node.update(payload, isReconnected);
 
         // Refresh services if 'seq' is greater or it is a reconnected node
-        if (needRegister && node.services) {
-            this.registry.registerServices(node, node.services);
+        if (needRegister && node.gateway) {
+            await this.registry.registerServices(node, node.gateway);
         }
 
         // Local notifications
@@ -127,33 +130,6 @@ export class NodeCatalog {
         return node;
     }
 
-    registerService(nodeID: string, svc: ServiceSchema) {
-        if (!svc.fullName) {
-            svc.fullName = this.broker.ServiceFactory.getVersionedFullName(svc.name, svc.version);
-        }
-
-        if (this.registry.services.has(svc.fullName, nodeID)) {
-            return false;
-        }
-
-        const node = this.get(nodeID);
-        if (!node) {
-            return false;
-        }
-
-        const serviceSchema = this.convertSidecarService(node, svc);
-        this.logger.info(kleur.yellow().bold(`Register new '${serviceSchema.name}' service...`));
-        this.broker.createService(serviceSchema);
-
-        this.registry.services.add(node, serviceSchema);
-
-        node.services.push(serviceSchema);
-
-        this.onNodeUpdate(nodeID, node);
-
-        return true;
-    }
-
     /**
      * Disconnected a node
      *
@@ -161,23 +137,28 @@ export class NodeCatalog {
      * @param {Boolean} isUnexpected
      * @memberof NodeCatalog
      */
-    // disconnected(nodeID, isUnexpected) {
-    //     let node = this.get(nodeID);
-    //     if (node && node.available) {
-    //         node.disconnected(isUnexpected);
+    disconnected(nodeID: string, isUnexpected = false) {
+        let node = this.get(nodeID);
+        if (node && node.available) {
+            node.disconnected(isUnexpected);
 
-    //         this.registry.unregisterServicesByNode(node.id);
+            this.registry.unregisterServicesByNode(node.id);
 
-    //         this.broker.broadcastLocal('$node.disconnected', { node, unexpected: !!isUnexpected });
+            this.broker.broadcastLocal('$sidecar-node.disconnected', {
+                node,
+                unexpected: !!isUnexpected,
+            });
 
-    //         this.registry.updateMetrics();
+            // this.registry.updateMetrics();
 
-    //         if (isUnexpected) this.logger.warn(`Node '${node.id}' disconnected unexpectedly.`);
-    //         else this.logger.info(`Node '${node.id}' disconnected.`);
-
-    //         if (this.broker.transit) this.broker.transit.removePendingRequestByNodeID(nodeID);
-    //     }
-    // }
+            if (isUnexpected) {
+                this.logger.warn(`Node '${node.id}' disconnected unexpectedly.`);
+            } else {
+                this.delete(nodeID);
+                this.logger.info(`Sidecar node '${node.id}' disconnected.`);
+            }
+        }
+    }
 
     /**
      * Get a node list
@@ -186,17 +167,13 @@ export class NodeCatalog {
      * @returns
      * @memberof NodeCatalog
      */
-    list({ onlyAvailable = false, withServices = false }) {
-        let res: Omit<Node, 'rawInfo' | 'services'>[] = [];
+    list({ onlyAvailable = true }) {
+        let res: Partial<Node>[] = [];
         this.nodes.forEach((node) => {
             if (onlyAvailable && !node.available) {
                 return;
             }
-            if (withServices) {
-                res.push(_.omit(node, ['rawInfo']));
-            } else {
-                res.push(_.omit(node, ['rawInfo', 'services']));
-            }
+            res.push(_.omit(node, ['rawInfo', 'gateway.auth']));
         });
 
         return res;
@@ -207,78 +184,5 @@ export class NodeCatalog {
      */
     toArray() {
         return Array.from(this.nodes.values());
-    }
-
-    private convertSidecarService(node: Node, service: ServiceSchema) {
-        const gateway = new Gateway(node.gateway!);
-
-        const schema = _.cloneDeep(service);
-
-        // Convert the schema, fulfill the action/event handlers
-        if (schema.created) {
-            schema.created = function handler() {
-                // self.sendRequestToNode(ctx, node, "lifecycle", {
-                //     event: {
-                //         name: "created",
-                //         handler: originalSchema.created
-                //     }
-                // });
-            };
-        }
-
-        if (schema.started) {
-            schema.started = function handler() {
-                // return self.sendRequestToNode(ctx, node, "lifecycle", {
-                //     event: {
-                //         name: "started",
-                //         handler: originalSchema.started
-                //     }
-                // });
-            };
-        }
-
-        if (schema.stopped) {
-            schema.stopped = function handler() {
-                // return self.sendRequestToNode(ctx, node, "lifecycle", {
-                //     event: {
-                //         name: "stopped",
-                //         handler: originalSchema.stopped
-                //     }
-                // });
-            };
-        }
-
-        if (schema.actions) {
-            for (const [actionName, action] of Object.entries(schema.actions)) {
-                if (typeof action === 'boolean' || typeof action === 'function') {
-                    continue;
-                }
-                let newAction = _.cloneDeep(action);
-                newAction.handler = (ctx: Context) => {
-                    ctx.endpoint = { node: { gateway } } as any;
-                    return this.registry.transit.request(ctx);
-                };
-                schema.actions[actionName] = newAction;
-            }
-        }
-
-        if (schema.events) {
-            for (const [eventName, event] of Object.entries(schema.events)) {
-                if (typeof event === 'function') {
-                    continue;
-                }
-                let newEvent = _.cloneDeep(event);
-                newEvent.handler = (ctx: Context) => {
-                    ctx.endpoint = { node: { gateway } } as any;
-                    return this.registry.transit.sendEvent(ctx);
-                };
-                schema.events[eventName] = newEvent;
-            }
-        }
-
-        schema.channels = {};
-        schema.hooks = {};
-
-        return schema;
     }
 }

@@ -1,6 +1,8 @@
 import _ from 'lodash';
 import { ServiceSchema } from 'moleculer';
 
+import { InfoPayload } from '../packet';
+
 type ClientInfo = {
     type: string;
     version: string;
@@ -22,7 +24,7 @@ type Gateway = {
 };
 
 export type NodeInfo = {
-    instanceID: string;
+    instanceID: string | null;
     metadata: string;
     gateway?: Gateway;
     client: ClientInfo;
@@ -37,15 +39,12 @@ export class Node {
     public available: boolean;
     public local: boolean;
     public lastHeartbeatTime: number;
-    public config: any;
     public metadata: any;
     public client: ClientInfo | Object;
     public offlineSince: number | null;
     public gateway: Gateway | null;
 
-    public rawInfo: NodeInfo | null;
-
-    public services: ServiceSchema[] = [];
+    public rawInfo: InfoPayload | null;
 
     public seq: number;
 
@@ -55,36 +54,29 @@ export class Node {
         this.available = true;
         this.local = true;
         this.lastHeartbeatTime = Math.round(process.uptime());
-        this.config = {};
         this.client = {};
         this.metadata = null;
 
         this.gateway = null;
 
         this.rawInfo = null;
-        this.services = [];
 
         this.seq = 0;
         this.offlineSince = null;
     }
 
-    public update(nodeInfo: NodeInfo, isReconnected: boolean) {
+    public update(payload: InfoPayload, isReconnected: boolean) {
         // Update properties
-        this.metadata = nodeInfo.metadata;
-        this.client = nodeInfo.client || {};
-        this.config = nodeInfo.config || {};
+        this.metadata = payload.metadata;
+        this.client = payload.client || {};
 
-        this.gateway = nodeInfo.gateway || null;
+        this.gateway = payload.gateway || null;
 
-        // Process services & events (should make a clone because it will manipulate the objects (add handlers))
-        if (nodeInfo.services) {
-            this.services = _.cloneDeep(nodeInfo.services);
-        }
-        this.rawInfo = nodeInfo;
+        this.rawInfo = payload;
 
-        const newSeq = nodeInfo.seq || 1;
-        if (newSeq > this.seq || isReconnected || nodeInfo.instanceID !== this.instanceID) {
-            this.instanceID = nodeInfo.instanceID;
+        const newSeq = payload.seq || 1;
+        if (newSeq > this.seq || isReconnected || payload.instanceID !== this.instanceID) {
+            this.instanceID = payload.instanceID;
             this.seq = newSeq;
             return true;
         }
@@ -101,7 +93,7 @@ export class Node {
         this.lastHeartbeatTime = Math.round(process.uptime());
     }
 
-    public disconnected() {
+    public disconnected(isUnexpected: boolean) {
         if (this.available) {
             this.offlineSince = Math.round(process.uptime());
             this.seq++;

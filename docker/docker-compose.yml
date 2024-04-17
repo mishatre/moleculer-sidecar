@@ -1,0 +1,35 @@
+
+name: sidecar
+services:
+  sidecar:
+    image: sidecar
+    build: 
+      context: ../
+      dockerfile: docker/Dockerfile
+    environment:
+      - NODEID=v2.sidecar
+      - SERVICEDIR=build/services
+      - SERVICES=sidecar.service.mjs
+      - TRANSPORTER=nats://nats.docker.orb.local:4222
+      - DOPPLER_TOKEN
+    volumes:
+      - ../data:/usr/src/app/data
+    ports:
+      - "5103:5103"
+    # links:
+    #   - nats
+  lab:
+    image: sidecar
+    build: 
+      context: ../
+      dockerfile: docker/Dockerfile
+    environment:
+      - NODEID=v2.sidecar.lab
+      - SERVICEDIR=build/services
+      - SERVICES=lab.service.mjs
+      - TRANSPORTER=nats://nats.docker.orb.local:4222
+      - DOPPLER_TOKEN
+  # nats:
+  #   image: nats:latest
+  #   command: -js
+    

@@ -1,8 +1,8 @@
 // @ts-ignore
 import Laboratory from '@moleculer/lab';
 import { config } from 'dotenv';
+import { Service } from 'moldecor';
 import { Service as MoleculerService } from 'moleculer';
-import { Service } from 'moleculer-decorators';
 
 config();
 

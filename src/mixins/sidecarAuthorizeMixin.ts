@@ -1,19 +1,12 @@
 import { Level } from 'level';
 import _ from 'lodash';
+import { Action, Created, Method, Service, Started, Stopped } from 'moldecor';
 import { Context, Errors, Service as MoleculerService, ServiceSettingSchema } from 'moleculer';
 import ApiGateway from 'moleculer-web';
 import { randomBytes } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
-import {
-    MoleculerAction as Action,
-    MoleculerMethod as Method,
-    MoleculerService as Service,
-    MoleculerServiceCreated as ServiceCreated,
-    MoleculerServiceStarted as ServiceStarted,
-    MoleculerServiceStopped as ServiceStopped,
-} from '../mol-decor';
 import { getRootDir } from '../uitls';
 import { parseReqSigV4, validateMessage } from '../uitls/aws-signature';
 import { IncomingMessage } from './sidecarApiGatewayMixin';
@@ -176,7 +169,7 @@ export default class SidecarAuthorize extends MoleculerService<SidecarAuthorizeS
     /**
      * Service created lifecycle event handler
      */
-    @ServiceCreated
+    @Created
     public created() {
         this.auth_dbPath = path.join(process.env.DATA ?? path.join(getRootDir(), 'data'), 'auth');
         mkdirSync(this.auth_dbPath, { recursive: true });
@@ -185,7 +178,7 @@ export default class SidecarAuthorize extends MoleculerService<SidecarAuthorizeS
     /**
      * Service started lifecycle event handler
      */
-    @ServiceStarted
+    @Started
     public started() {
         // Create a database
         this.auth_db = new Level(this.auth_dbPath, { valueEncoding: 'json' });
@@ -197,7 +190,7 @@ export default class SidecarAuthorize extends MoleculerService<SidecarAuthorizeS
     /**
      * Service stopped lifecycle event handler
      */
-    @ServiceStopped
+    @Stopped
     protected stopped() {
         return this.auth_db.close();
     }

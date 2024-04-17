@@ -1,8 +1,8 @@
 import bodyParser from 'body-parser';
 import kleur from 'kleur';
 import _ from 'lodash';
+import { Action, Created, Method, Service, Started, Stopped } from 'moldecor';
 import {
-    ActionEndpoint,
     ActionSchema,
     Context,
     Errors,
@@ -16,15 +16,6 @@ import http2, { Http2ServerRequest, Http2ServerResponse } from 'node:http2';
 import https from 'node:https';
 import { AddressInfo } from 'node:net';
 import os from 'node:os';
-
-import {
-    MoleculerAction as Action,
-    MoleculerMethod as Method,
-    MoleculerService as Service,
-    MoleculerServiceCreated as ServiceCreated,
-    MoleculerServiceStarted as ServiceStarted,
-    MoleculerServiceStopped as ServiceStopped,
-} from '../mol-decor';
 
 type DefaultContext = Context<
     {
@@ -59,7 +50,7 @@ type ServerResponse = (Http2ServerResponse | http.ServerResponse) & ServerRespon
 type ActionSchemaWithResponseHeaders = ActionSchema & { responseHeaders?: Record<string, string> };
 
 interface SidecarApiGatewaySettings extends ServiceSettingSchema {
-    port: number;
+    port: string | number;
     // Exposed IP
     ip: string;
     // Log each request (default to "info" level)
@@ -92,6 +83,8 @@ interface SidecarApiGatewaySettings extends ServiceSettingSchema {
     logging: boolean;
     authorization: boolean;
 }
+
+export type SidecarApiGatewayMixinSettings = Partial<SidecarApiGatewaySettings>;
 
 /**
  * Not found HTTP error
@@ -151,6 +144,8 @@ function convertToMoleculerError(error: unknown): error is Errors.MoleculerError
 @Service({
     name: 'sidecarApiGateway',
     settings: {
+        $secureSettings: ['https'],
+
         // Exposed port
         port: Number(process.env.PORT) || 3000,
 
@@ -192,7 +187,7 @@ function convertToMoleculerError(error: unknown): error is Errors.MoleculerError
     },
 })
 export default class SidecarApiGateway extends MoleculerService<SidecarApiGatewaySettings> {
-    private parser = bodyParser.json();
+    private parser = bodyParser.text({ type: 'application/json' });
 
     private server!: http.Server | http2.Http2Server;
 
@@ -254,8 +249,6 @@ export default class SidecarApiGateway extends MoleculerService<SidecarApiGatewa
                     );
                 });
 
-                const params = _.isObject(req.body) ? req.body : {};
-
                 // Authorization
                 if (this.settings.authorization) {
                     await this.authorize.call(this, ctx, req, res);
@@ -271,20 +264,16 @@ export default class SidecarApiGateway extends MoleculerService<SidecarApiGatewa
                         this.settings.logRequestParams &&
                         this.settings.logRequestParams in this.logger
                     )
-                        this.logger[this.settings.logRequestParams]('   Params:', params);
+                        this.logger[this.settings.logRequestParams]('   Params:', req.body);
                 }
 
-                const opts = {
-                    parentCtx: ctx,
-                };
-
-                // Call the action
-                let data = await this.actions.incomingMessage(params, opts);
-                const action = this.schema.actions!
-                    .incomingMessage as ActionSchemaWithResponseHeaders;
+                // Handle incoming message
+                const data = await new Promise((resolve, reject) => {
+                    this.internalEvents.emit('message', req.body, ctx, resolve, reject);
+                });
 
                 // Send back the response
-                this.sendResponse(req, res, data, action);
+                this.sendResponse(req, res, data);
 
                 if (this.settings.logging) {
                     this.logResponse(req, res, data);
@@ -306,16 +295,11 @@ export default class SidecarApiGateway extends MoleculerService<SidecarApiGatewa
      * @param {Object?} action
      */
     @Method
-    private sendResponse(
-        req: IncomingMessage,
-        res: ServerResponse,
-        data: unknown,
-        action: ActionSchemaWithResponseHeaders,
-    ) {
+    private sendResponse(req: IncomingMessage, res: ServerResponse, data: unknown) {
         const ctx = req.$ctx!;
 
         if (res.headersSent) {
-            this.logger.warn('Headers have already sent.', { url: req.url, action });
+            this.logger.warn('Headers have already sent.', { url: req.url });
             return;
         }
 
@@ -348,19 +332,6 @@ export default class SidecarApiGateway extends MoleculerService<SidecarApiGatewa
 
         // Override responseType from action schema
         let responseType;
-        if (action && action.responseType) {
-            responseType = action.responseType;
-        }
-
-        // Custom headers from action schema
-        if (action && action.responseHeaders) {
-            for (const [key, value] of Object.entries(action.responseHeaders)) {
-                res.setHeader(key, value);
-                if (key == 'Content-Type' && !responseType) {
-                    responseType = value;
-                }
-            }
-        }
 
         // Custom responseType from ctx.meta
         if (ctx.meta.$responseType) {
@@ -720,7 +691,7 @@ export default class SidecarApiGateway extends MoleculerService<SidecarApiGatewa
     /**
      * Service created lifecycle event handler
      */
-    @ServiceCreated
+    @Created
     protected created() {
         // Create a new HTTP/HTTPS/HTTP2 server instance
         this.createServer();
@@ -729,7 +700,7 @@ export default class SidecarApiGateway extends MoleculerService<SidecarApiGatewa
             this.logger.error('Server error', error);
         });
 
-        this.parser = bodyParser.json();
+        this.parser = bodyParser.text({ type: 'application/json' });
 
         this.logger.info('Sidecar gateway server created.');
     }
@@ -737,10 +708,10 @@ export default class SidecarApiGateway extends MoleculerService<SidecarApiGatewa
     /**
      * Service started lifecycle event handler
      */
-    @ServiceStarted
+    @Started
     protected started() {
         return new Promise<void>((resolve) => {
-            this.server.listen(this.settings.port, this.settings.ip, () => {
+            this.server.listen(Number(this.settings.port), this.settings.ip, () => {
                 const addr = this.server.address() as AddressInfo;
                 const listenAddr =
                     addr.address == '0.0.0.0' && os.platform() == 'win32'
@@ -757,7 +728,7 @@ export default class SidecarApiGateway extends MoleculerService<SidecarApiGatewa
     /**
      * Service stopped lifecycle event handler
      */
-    @ServiceStopped
+    @Stopped
     protected stopped() {
         if (!this.server.listening) {
             return Promise.resolve();
