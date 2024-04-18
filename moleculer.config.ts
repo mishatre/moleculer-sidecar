@@ -217,7 +217,7 @@ const brokerConfig: BrokerOptions = {
                 type: 'NATS',
                 options: {
                     nats: {
-                        url: 'nats://nats.docker.orb.local', //nats:4222',
+                        url: process.env.CHANNELS_ADAPTER_NATS,
                         deadLettering: {
                             enabled: true,
                             queueName: 'DEAD_LETTER',
