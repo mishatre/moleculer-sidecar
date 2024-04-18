@@ -27,7 +27,6 @@
     },
     "dependencies": {
         "@moleculer/channels": "^0.1.8",
-        "@moleculer/lab": "^0.6.4",
         "body-parser": "^1.20.2",
         "cbor-extract": "^2.2.0",
         "cbor-x": "^1.5.8",

@@ -1,7 +1,8 @@
 import Channels from '@moleculer/channels';
-import '@moleculer/lab';
 import type { BrokerOptions, ServiceRegistry } from 'moleculer';
 import { Errors } from 'moleculer';
+
+import './src/lab/index.js';
 
 /**
  * Moleculer ServiceBroker configuration file
