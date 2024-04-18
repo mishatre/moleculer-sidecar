@@ -6,4 +6,3 @@ build
 data
 *.crt
 *.key
-docker

@@ -1,6 +1,6 @@
 import Channels from '@moleculer/channels';
 import '@moleculer/lab';
-import type { BrokerOptions } from 'moleculer';
+import type { BrokerOptions, ServiceRegistry } from 'moleculer';
 import { Errors } from 'moleculer';
 
 /**
@@ -158,20 +158,36 @@ const brokerConfig: BrokerOptions = {
     metrics: {
         enabled: true,
         // Available built-in reporters: "Console", "CSV", "Event", "Prometheus", "Datadog", "StatsD"
-        reporter: {
-            type: 'Laboratory',
-            options: {
-                // // HTTP port
-                // port: 3030,
-                // // HTTP URL path
-                // path: "/metrics",
-                // // Default labels which are appended to all metrics labels
-                // defaultLabels: (registry: MetricRegistry) => ({
-                // 	namespace: registry.broker.namespace,
-                // 	nodeID: registry.broker.nodeID,
-                // }),
+        reporter: [
+            {
+                type: 'Laboratory',
+                options: {
+                    // // HTTP port
+                    // port: 3030,
+                    // // HTTP URL path
+                    // path: "/metrics",
+                    // // Default labels which are appended to all metrics labels
+                    // defaultLabels: (registry: MetricRegistry) => ({
+                    // 	namespace: registry.broker.namespace,
+                    // 	nodeID: registry.broker.nodeID,
+                    // }),
+                },
             },
-        },
+            {
+                type: 'Prometheus',
+                options: {
+                    // HTTP port
+                    port: 3030,
+                    // HTTP URL path
+                    path: '/metrics',
+                    // Default labels which are appended to all metrics labels
+                    defaultLabels: (registry: ServiceRegistry) => ({
+                        namespace: registry.broker.namespace,
+                        nodeID: registry.broker.nodeID,
+                    }),
+                },
+            },
+        ],
     },
 
     // Enable built-in tracing function. More info: https://moleculer.services/docs/0.14/tracing.html

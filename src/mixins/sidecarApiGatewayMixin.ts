@@ -82,6 +82,8 @@ interface SidecarApiGatewaySettings extends ServiceSettingSchema {
 
     logging: boolean;
     authorization: boolean;
+
+    rootUrl: string;
 }
 
 export type SidecarApiGatewayMixinSettings = Partial<SidecarApiGatewaySettings>;
@@ -184,6 +186,8 @@ function convertToMoleculerError(error: unknown): error is Errors.MoleculerError
 
         logging: true,
         authorization: false,
+
+        rootUrl: '/v1/message',
     },
 })
 export default class SidecarApiGateway extends MoleculerService<SidecarApiGatewaySettings> {
@@ -223,7 +227,7 @@ export default class SidecarApiGateway extends MoleculerService<SidecarApiGatewa
             url = url.slice(0, -1);
         }
 
-        if (req.method !== 'POST' || url !== '/v1/message') {
+        if (req.method !== 'POST' || url !== this.settings.rootUrl) {
             return null;
         }
 

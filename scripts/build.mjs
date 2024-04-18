@@ -15,7 +15,7 @@ async function main() {
     // clean build folder
     await emptyDir(outputDir);
 
-    build('./src/services/**.service.ts', { outdir: `${outputDir}/services` });
+    build('./src/index.service.ts', { outfile: `${outputDir}/index.service.mjs` });
     build('./moleculer.config.ts', { outfile: `${outputDir}/moleculer.config.mjs` });
 }
 

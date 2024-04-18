@@ -8,7 +8,7 @@
     "scripts": {
         "compose:up": "DOPPLER_TOKEN=\"$(doppler configs tokens create --project v2-sidecar --config dev api-v2-sidecar-token --plain --max-age 1m)\" docker compose -f ./docker/docker-compose.yml up",
         "build": "node ./scripts/build.mjs --sourcemap",
-        "start": "moleculer-runner-esm --config ./moleculer.config.mjs",
+        "start": "moleculer-runner-esm --config ./moleculer.config.mjs ./build/index.service.mjs",
         "start:dev": "tsx ./node_modules/moleculer/bin/moleculer-runner.mjs --config ./moleculer.config.ts --env --hot ./src/index.ts"
     },
     "author": "M.Tregub",
@@ -22,14 +22,11 @@
         "classic-level": "1.4.1",
         "esbuild": "^0.20.2",
         "fs-extra": "^11.2.0",
-        "node-windows": "1.0.0-beta.8",
-        "sqlite3": "^5.1.7",
         "tsx": "^4.2.0",
         "typescript": "^5.3.2"
     },
     "dependencies": {
         "@moleculer/channels": "^0.1.8",
-        "@moleculer/lab": "^0.6.4",
         "body-parser": "^1.20.2",
         "cbor-extract": "^2.2.0",
         "cbor-x": "^1.5.8",
