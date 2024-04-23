@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import { Action, Created, Method, Service, Started, Stopped } from 'moldecor';
-import { ActionSchema, Context, Errors, Service as MoleculerService } from 'moleculer';
+import { ActionSchema, Context, Service as MoleculerService } from 'moleculer';
 import EventEmitter from 'node:events';
 
 import pkgJSON from '../package.json';
@@ -29,13 +29,6 @@ export type ServicePublication = {
     namespace: string;
     gateway: NodeGateway;
 };
-
-function wrapResponse(error?: Errors.MoleculerError, result?: any) {
-    return {
-        error,
-        result,
-    };
-}
 
 @Service({
     name: '$sidecar',
@@ -103,7 +96,7 @@ export default class SidecarService extends MoleculerService<SidecarApiGatewayMi
         } else if (ctx.params.nodeID) {
             const nodeInfo = this.registry.getNodeInfo(ctx.params.nodeID);
             if (nodeInfo && nodeInfo.gateway) {
-                gateway = new Gateway(nodeInfo.gateway);
+                gateway = nodeInfo.gateway;
             }
         }
         if (!gateway) {
@@ -112,7 +105,7 @@ export default class SidecarService extends MoleculerService<SidecarApiGatewayMi
         }
 
         const requestCtx = this.broker.ContextFactory.create(this.broker);
-        requestCtx.endpoint = { node: { gateway } } as any;
+        requestCtx.locals = { gateway, handler: ctx.params.action.handler };
         requestCtx.nodeID = ctx.params.nodeID;
         requestCtx.action = ctx.params.action as unknown as ActionSchema;
         return this.transit.request(requestCtx);
@@ -135,8 +128,13 @@ export default class SidecarService extends MoleculerService<SidecarApiGatewayMi
     }
 
     @Method
-    protected reformatError(error: any) {
-        return wrapResponse(error);
+    protected reformatError(error: Error) {
+        return this.transit.packetFactory.response(
+            '',
+            '',
+            this.broker.errorRegenerator?.extractPlainError(error),
+            null,
+        );
     }
 
     @Started

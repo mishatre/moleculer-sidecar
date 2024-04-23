@@ -1,17 +1,16 @@
-import { Channel } from '@moleculer/channels/types/src/index';
+import { Channel } from '@moleculer/channels/types/src/index.js';
 import { mkdirSync } from 'fs';
 import kleur from 'kleur';
 import { Level } from 'level';
 import _ from 'lodash';
-import { ActionHandler, Context, LoggerInstance, ServiceBroker, ServiceSchema } from 'moleculer';
+import { Context, LoggerInstance, ServiceBroker, ServiceSchema } from 'moleculer';
 import path from 'path';
 
-import { Gateway, NodeGateway } from '../gateway';
-import { InfoPayload } from '../packet';
-import SidecarService from '../services/sidecar.service';
-import { getRootDir } from '../uitls';
-import { Node } from './node';
-import { NodeCatalog } from './node-catalog';
+import SidecarService from '../index.service.js';
+import { InfoPayload } from '../packet.js';
+import { getRootDir } from '../uitls/index.js';
+import { NodeCatalog } from './node-catalog.js';
+import { Node } from './node.js';
 
 export default class SidecarRegistry {
     private dbPath: string;
@@ -57,7 +56,7 @@ export default class SidecarRegistry {
                 heartbeatTimeout: null,
 
                 disableHeartbeatChecks: false,
-                disableOfflineNodeRemoving: false,
+                disableOfflineNodeRemoving: true,
                 cleanOfflineNodesTimeout: 10 * 60, // 10 minutes
             },
         );
@@ -113,12 +112,14 @@ export default class SidecarRegistry {
                 continue;
             }
             this.logger.warn(`Loading node '${nodeID}' from database.`);
-            const promise = this.nodes.processNodeInfo(infoPayload);
+            const promise = this.nodes.processNodeInfo(nodeID, infoPayload);
             pendingPromises.push(promise);
         }
-        const count = await Promise.allSettled(pendingPromises).then(
-            (result) => result.filter((r) => r.status === 'fulfilled').length,
-        );
+        const settledPromises = await Promise.allSettled(pendingPromises);
+        const count = settledPromises.filter((r) => r.status === 'fulfilled').length;
+        for (const result of settledPromises.filter((r) => r.status === 'rejected')) {
+            this.logger.error((result as PromiseRejectedResult).reason);
+        }
         this.initialized = true;
         this.logger.info(`Sidecar registry initialized with ${count} nodes.`);
 
@@ -268,8 +269,8 @@ export default class SidecarRegistry {
         }
     }
 
-    public processNodeInfo(payload: InfoPayload) {
-        return this.nodes.processNodeInfo(payload);
+    public processNodeInfo(sender: string, payload: InfoPayload) {
+        return this.nodes.processNodeInfo(sender, payload);
     }
 
     public getNodeInfo(nodeID: string) {
@@ -291,8 +292,11 @@ export default class SidecarRegistry {
         }
     }
 
-    public async registerServices(node: Node, gateway: NodeGateway) {
-        const services = await this.sidecar.transit.discoverNodeServices(node.id, gateway);
+    public async registerServices(node: Node) {
+        if (!node.gateway) {
+            throw new Error('Cannot register services without gateway');
+        }
+        const services = await this.sidecar.transit.discoverNodeServices(node.id, node.gateway);
         for (const svc of services) {
             const service = this.sidecar.broker.getLocalService(svc.fullName);
             if (service) {
@@ -341,7 +345,7 @@ export default class SidecarRegistry {
     }
 
     private convertSidecarService(node: Node, service: ServiceSchema) {
-        const gateway = new Gateway(node.gateway!);
+        const gateway = node.gateway;
 
         const schema = _.cloneDeep(service);
 
@@ -386,8 +390,10 @@ export default class SidecarRegistry {
                 }
                 let newAction = _.cloneDeep(action);
                 newAction.handler = (ctx: Context) => {
-                    ctx.endpoint = { node: { gateway } } as any;
-                    ctx.action!.handler = action.handler as unknown as ActionHandler;
+                    ctx.locals = {
+                        handler: action.handler,
+                        gateway,
+                    };
                     return this.sidecar.transit.request(ctx);
                 };
                 schema.actions[actionName] = newAction;
@@ -401,8 +407,11 @@ export default class SidecarRegistry {
                 }
                 let newEvent = _.cloneDeep(event);
                 newEvent.handler = (ctx: Context) => {
-                    ctx.endpoint = { node: { gateway } } as any;
-                    return this.sidecar.transit.sendEvent(event.handler as unknown as string, ctx);
+                    ctx.locals = {
+                        handler: event.handler,
+                        gateway,
+                    };
+                    return this.sidecar.transit.sendEvent(ctx);
                 };
                 schema.events[eventName] = newEvent;
             }
@@ -418,12 +427,11 @@ export default class SidecarRegistry {
                 }
                 let newChannel = _.cloneDeep(channel);
                 newChannel.handler = (ctx: Context, raw: unknown) => {
-                    ctx.endpoint = { node: { gateway } } as any;
-                    return this.sidecar.transit.sendChannelEvent(
-                        channel.handler as unknown as string,
-                        ctx,
-                        raw,
-                    );
+                    ctx.locals = {
+                        handler: channel.handler,
+                        gateway,
+                    };
+                    return this.sidecar.transit.sendChannelEvent(ctx, raw);
                 };
                 schema.channels[channelName] = newChannel;
             }

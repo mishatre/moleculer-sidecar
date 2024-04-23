@@ -7,9 +7,9 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
-import { getRootDir } from '../uitls';
-import { parseReqSigV4, validateMessage } from '../uitls/aws-signature';
-import { IncomingMessage } from './sidecarApiGatewayMixin';
+import { parseReqSigV4, validateMessage } from '../uitls/aws-signature.js';
+import { getRootDir } from '../uitls/index.js';
+import { IncomingMessage } from './sidecarApiGatewayMixin.js';
 
 interface SidecarAuthorizeSettings extends ServiceSettingSchema {}
 
@@ -55,7 +55,11 @@ export default class SidecarAuthorize extends MoleculerService<SidecarAuthorizeS
                 if (!secretKey) {
                     throw new Errors.MoleculerError('INVALID_ACCESS_KEY', 400);
                 }
-                return validateMessage(message, secretKey);
+                const result = validateMessage(message, secretKey);
+                if (!result.valid) {
+                    throw new Errors.MoleculerError(result.error!, 400);
+                }
+                return true;
             });
     }
 

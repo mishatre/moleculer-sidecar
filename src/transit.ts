@@ -1,9 +1,10 @@
 import { Context, Endpoint, Errors, LoggerInstance, ServiceBroker } from 'moleculer';
 import { parseStringPromise } from 'xml2js';
 
-import { Gateway, NodeGateway } from './gateway';
-import { Packet, PacketType, PayloadByPacketType } from './packet';
-import SidecarService from './services/sidecar.service';
+import { Gateway } from './gateway.js';
+import SidecarService from './index.service.js';
+import { PacketFactory } from './packet-factory.js';
+import { Packet, PacketType, PayloadByPacketType } from './packet.js';
 
 async function convert1CErrorToMoleculerError(response: Response, errorText: string) {
     const xmlData = await parseStringPromise(errorText);
@@ -15,16 +16,11 @@ async function convert1CErrorToMoleculerError(response: Response, errorText: str
     return error;
 }
 
-function isRequestPacket(cmd: PacketType): cmd is PacketType.PACKET_REQUEST {
-    return cmd === PacketType.PACKET_REQUEST;
-}
-
 export class SidecarTransit {
+    public packetFactory: PacketFactory;
+
     private nodeID: string;
     public instanceID: string;
-    private opts: {
-        maxQueueSize: number;
-    };
 
     private broker: ServiceBroker;
     private logger: LoggerInstance;
@@ -34,12 +30,11 @@ export class SidecarTransit {
     constructor(private sidecar: SidecarService) {
         this.nodeID = sidecar.broker.nodeID;
         this.instanceID = sidecar.broker.instanceID;
-        this.opts = {
-            maxQueueSize: 100,
-        };
 
         this.logger = sidecar.broker.getLogger('sidecar-transit');
         this.broker = sidecar.broker;
+
+        this.packetFactory = new PacketFactory(this.broker, '1');
     }
 
     public incomingMessage(message: string, ctx: Context, resolve: Function, reject: Function) {
@@ -56,31 +51,29 @@ export class SidecarTransit {
         }
     }
 
-    private messageHandler(cmd: PacketType, packet: Packet<typeof cmd>, ctx?: Context) {
+    private messageHandler(cmd: PacketType, packet: Packet<any>, ctx?: Context) {
         try {
-            const payload = packet.payload;
-
-            if (isRequestPacket(cmd)) {
-                return this.requestHandler(payload, ctx!);
-            } else if (cmd === PacketType.PACKET_RESPONSE) {
-                return this.responseHandler(payload);
-            } else if (cmd === PacketType.PACKET_EVENT) {
-                return this.eventHandler(payload);
-            } else if (cmd === PacketType.PACKET_CHANNEL_EVENT_REQUEST) {
-                return this.channelEventHandler(payload, ctx!);
-            } else if (cmd === PacketType.PACKET_DISCOVER) {
-                return this.sendNodeInfo(payload, ctx!);
-            } else if (cmd === PacketType.PACKET_INFO) {
-                this.sidecar.registry.processNodeInfo(payload);
-            } else if (cmd === PacketType.PACKET_SERVICES_INFO) {
-                return payload.services;
-            } else if (cmd === PacketType.PACKET_DISCONNECT) {
-                this.sidecar.registry.nodes.disconnected(payload.sender, false);
-            } else if (cmd === PacketType.PACKET_HEARTBEAT) {
-                this.sidecar.registry.heartbeatReceived(payload.sender, payload);
-            } else if (cmd === PacketType.PACKET_PING) {
+            if (packet.type === PacketType.PACKET_REQUEST) {
+                return this.requestHandler(packet, ctx!);
+            } else if (packet.type === PacketType.PACKET_RESPONSE) {
+                return this.responseHandler(packet);
+            } else if (packet.type === PacketType.PACKET_EVENT) {
+                return this.eventHandler(packet, ctx!);
+            } else if (packet.type === PacketType.PACKET_CHANNEL_EVENT_REQUEST) {
+                return this.channelEventHandler(packet, ctx!);
+            } else if (packet.type === PacketType.PACKET_DISCOVER) {
+                return this.sendNodeInfo(packet.sender, ctx!);
+            } else if (packet.type === PacketType.PACKET_INFO) {
+                this.sidecar.registry.processNodeInfo(packet.sender, packet.payload);
+            } else if (packet.type === PacketType.PACKET_SERVICES_INFO) {
+                return packet.payload.services;
+            } else if (packet.type === PacketType.PACKET_DISCONNECT) {
+                this.sidecar.registry.nodes.disconnected(packet.sender, false);
+            } else if (packet.type === PacketType.PACKET_HEARTBEAT) {
+                this.sidecar.registry.heartbeatReceived(packet.sender, packet.payload);
+            } else if (packet.type === PacketType.PACKET_PING) {
                 // return this.sendPong(payload, ctx);
-            } else if (cmd === PacketType.PACKET_PONG) {
+            } else if (packet.type === PacketType.PACKET_PONG) {
                 // return this.processPong(payload, ctx);
             }
             if (ctx) {
@@ -96,21 +89,19 @@ export class SidecarTransit {
         return false;
     }
 
-    private async requestHandler(
-        payload: PayloadByPacketType[PacketType.PACKET_REQUEST],
-        reqCtx: Context,
-    ) {
+    private async requestHandler(packet: Packet<PacketType.PACKET_REQUEST>, reqCtx: Context) {
+        const { payload, sender } = packet;
         const requestID = payload.requestID ? "with requestID '" + payload.requestID + "' " : '';
         this.logger.debug(
-            `<= Request '${payload.action}' ${requestID}received from '${payload.sender}' node.`,
+            `<= Request '${payload.action}' ${requestID}received from '${sender}' node.`,
         );
 
-        let response, meta, error;
+        let data, meta, error;
 
         try {
             if (this.broker.stopping) {
                 this.logger.warn(
-                    `Incoming '${payload.action}' ${requestID}request from '${payload.sender}' node is dropped because broker is stopped.`,
+                    `Incoming '${payload.action}' ${requestID}request from '${sender}' node is dropped because broker is stopped.`,
                 );
                 throw new Errors.ServiceNotAvailableError({
                     action: payload.action,
@@ -122,7 +113,9 @@ export class SidecarTransit {
             if (payload.action.startsWith('$sidecar')) {
                 endpoint = this.broker._getLocalActionEndpoint(payload.action);
             } else {
+                this.logger.warn(payload);
                 endpoint = this.broker.findNextActionEndpoint(payload.action);
+                this.logger.warn(endpoint);
             }
             if (endpoint instanceof Error) {
                 throw new Errors.ServiceNotFoundError({
@@ -158,7 +151,7 @@ export class SidecarTransit {
             meta = ctx.meta;
 
             try {
-                response = await p;
+                data = await p;
             } catch (err) {
                 error = err;
             }
@@ -167,42 +160,33 @@ export class SidecarTransit {
         }
 
         // Return the response
-        const packet = new Packet(PacketType.PACKET_RESPONSE, payload.sender, {
-            id: payload.id,
-            meta,
-            success: error == null,
-            error: error
-                ? this.broker.errorRegenerator?.extractPlainError(error, payload)
-                : undefined,
-            data: response,
-        });
-        packet.extend(this.nodeID, '1');
+        const responsePacket = this.packetFactory.response(sender, payload.id, error, data, meta);
 
         if (reqCtx.locals.resolve) {
-            return reqCtx.locals.resolve(packet);
+            return reqCtx.locals.resolve(responsePacket);
         }
+        return responsePacket;
     }
 
-    private responseHandler(payload: PayloadByPacketType[PacketType.PACKET_RESPONSE]) {
+    private responseHandler(packet: Packet<PacketType.PACKET_RESPONSE>) {
+        const { payload, sender } = packet;
         const id = payload.id;
         const req = this.pendingRequests.get(id);
 
         if (!req) {
-            this.logger.debug(`<= Custom response is received from '${payload.sender}'.`);
+            this.logger.debug(`<= Custom response is received from '${sender}'.`);
             if (!payload.success) {
-                throw payload.error; //this._createErrFromPayload(packet.error, packet);
+                throw payload.error;
             }
             return payload.data;
         }
 
         if (req) {
-            this.logger.debug(
-                `<= Response '${req.action.name}' is received from '${payload.sender}'.`,
-            );
+            this.logger.debug(`<= Response '${req.action.name}' is received from '${sender}'.`);
         }
 
         // Update nodeID in context (if it uses external balancer)
-        req.ctx.nodeID = payload.sender;
+        req.ctx.nodeID = sender;
 
         // Merge response meta with original meta
         Object.assign(req.ctx.meta || {}, payload.meta || {});
@@ -221,16 +205,17 @@ export class SidecarTransit {
         return req.resolve(payload.data);
     }
 
-    private eventHandler(payload: PayloadByPacketType[PacketType.PACKET_EVENT]) {
+    private eventHandler(packet: Packet<PacketType.PACKET_EVENT>, reqCtx: Context) {
+        const { payload, sender } = packet;
         this.logger.debug(
-            `Event '${payload.event}' received from '${payload.sender}' node` +
+            `Event '${payload.event}' received from '${sender}' node` +
                 (payload.groups ? ` in '${payload.groups.join(', ')}' group(s)` : '') +
                 '.',
         );
 
         if (this.broker.stopping) {
             this.logger.warn(
-                `Incoming '${payload.event}' event from '${payload.sender}' node is dropped, because broker is stopped.`,
+                `Incoming '${payload.event}' event from '${sender}' node is dropped, because broker is stopped.`,
             );
             // return false so the transporter knows this event wasn't handled.
             return Promise.resolve(false);
@@ -249,23 +234,28 @@ export class SidecarTransit {
         ctx.parentID = payload.parentID;
         ctx.requestID = payload.requestID;
         ctx.caller = payload.caller;
-        ctx.nodeID = payload.sender;
+        ctx.nodeID = sender;
 
-        if (ctx.eventType === 'emit') {
-            return this.broker.emit(ctx.eventName, ctx.params, {
+        try {
+            let action = undefined;
+            if (ctx.eventType === 'emit') {
+                action = this.broker.emit;
+            } else if (ctx.eventType === 'broadcast') {
+                action = this.broker.broadcast;
+            } else if (ctx.eventType === 'broadcastLocal') {
+                action = this.broker.broadcastLocal;
+            } else {
+                console.log('unknown eventType', ctx.eventType);
+                return undefined;
+            }
+            return action(ctx.eventName, ctx.params, {
                 parentCtx: ctx,
+                groups: ctx.eventGroups,
             });
-        } else if (ctx.eventType === 'broadcast') {
-            return this.broker.broadcast(ctx.eventName, ctx.params, {
-                parentCtx: ctx,
-            });
-        } else if (ctx.eventType === 'broadcastLocal') {
-            return this.broker.broadcastLocal(ctx.eventName, ctx.params, {
-                parentCtx: ctx,
-            });
-        } else {
-            console.log('unknown eventType', ctx.eventType);
-            return undefined;
+        } finally {
+            if (reqCtx.locals.resolve) {
+                reqCtx.locals.resolve();
+            }
         }
     }
 
@@ -280,8 +270,6 @@ export class SidecarTransit {
     }
 
     public request(ctx: Context) {
-        const actionName = ctx.action?.name;
-
         return new Promise((resolve, reject) => {
             const request = {
                 action: ctx.action,
@@ -291,81 +279,51 @@ export class SidecarTransit {
                 reject,
             };
 
-            const packet = new Packet(PacketType.PACKET_REQUEST, ctx.nodeID, {
-                id: ctx.id,
-                action: actionName!,
-                params: ctx.params,
-                meta: ctx.meta,
-                timeout: ctx.options.timeout!,
-                level: ctx.level,
-                tracing: ctx.tracing!,
-                parentID: ctx.parentID!,
-                requestID: ctx.requestID!,
-                caller: ctx.caller!,
-
-                handler: ctx.action!.handler as unknown as string,
-            });
+            const actionName = ctx.action?.name;
 
             const nodeName = ctx.nodeID ? `'${ctx.nodeID}'` : 'someone';
             const requestID = ctx.requestID ? `with requestID '${ctx.requestID}'` : '';
             this.logger.debug(`=> Send '${actionName}' request ${requestID}to ${nodeName} node.`);
 
-            const publishCatch = (err: unknown) => {
-                this.logger.error(
-                    `Unable to send '${actionName}' request ${requestID}to ${nodeName} node.`,
-                    err,
-                );
-
-                this.broker.broadcastLocal('$transit.error', {
-                    error: err,
-                    module: 'transit',
-                    type: 'FAILED_SEND_REQUEST_PACKET',
-                });
-            };
-
             // Add to pendings
             this.pendingRequests.set(ctx.id, request);
 
             // Publish request
-            return this.send(packet, ctx.endpoint?.node.gateway).catch((error: unknown) => {
-                publishCatch(error);
-                reject(error);
-            });
+            return this.send(this.packetFactory.request(ctx), ctx.locals.gateway).catch(
+                (error: unknown) => {
+                    this.logger.error(
+                        `Unable to send '${actionName}' request ${requestID}to ${nodeName} node.`,
+                        error,
+                    );
+
+                    this.broker.broadcastLocal('$sidecar-transit.error', {
+                        error,
+                        module: 'transit',
+                        type: 'FAILED_SEND_REQUEST_PACKET',
+                    });
+
+                    reject(error);
+                },
+            );
         });
     }
 
-    public sendEvent(handler: string, ctx: Context) {
+    public sendEvent(ctx: Context) {
         const groups = ctx.eventGroups;
         const requestID = ctx.requestID ? "with requestID '" + ctx.requestID + "' " : '';
-        if (ctx.endpoint)
+        if (ctx.endpoint) {
             this.logger.debug(
                 `=> Send '${ctx.eventName}' event ${requestID}to '${ctx.nodeID}' node` +
                     (groups ? ` in '${groups.join(', ')}' group(s)` : '') +
                     '.',
             );
-        else
+        } else {
             this.logger.debug(
                 `=> Send '${ctx.eventName}' event ${requestID}to '${groups!.join(', ')}' group(s).`,
             );
+        }
 
-        const packet = new Packet(PacketType.PACKET_EVENT, ctx.endpoint ? ctx.nodeID : null, {
-            id: ctx.id,
-            event: ctx.eventName!,
-            data: ctx.params,
-            groups: groups!,
-            eventType: ctx.eventType!,
-            meta: ctx.meta,
-            level: ctx.level,
-            tracing: ctx.tracing!,
-            parentID: ctx.parentID!,
-            requestID: ctx.requestID!,
-            caller: ctx.caller!,
-            needAck: ctx.needAck!,
-
-            handler,
-        });
-
-        return this.send(packet, ctx.endpoint!.node.gateway).catch((err) => {
+        return this.send(this.packetFactory.event(ctx), ctx.locals.gateway).catch((err) => {
             this.logger.error(
                 `Unable to send '${ctx.eventName}' event ${requestID}to groups.`,
                 err,
@@ -379,35 +337,13 @@ export class SidecarTransit {
         });
     }
 
-    public sendChannelEvent(handler: string, ctx: Context, raw: any) {
+    public sendChannelEvent(ctx: Context, raw: any) {
         const requestID = ctx.requestID ? "with requestID '" + ctx.requestID + "' " : '';
         if (ctx.endpoint) {
             this.logger.debug(`=> Send channel event ${requestID}to '${ctx.nodeID}' node.`);
         }
 
-        const packet = new Packet(
-            PacketType.PACKET_CHANNEL_EVENT,
-            ctx.endpoint ? ctx.nodeID : null,
-            {
-                id: ctx.id,
-                data: ctx.params,
-                meta: ctx.meta,
-                tracing: ctx.tracing,
-                requestID: ctx.requestID,
-                raw: {
-                    info: raw.info,
-                    redelivered: raw.redelivered,
-                    reply: raw.reply,
-                    seq: raw.seq,
-                    sid: raw.sid,
-                    subject: raw.subject,
-                },
-
-                handler,
-            },
-        );
-
-        return this.send(packet, ctx.endpoint?.node.gateway).catch(
+        return this.send(this.packetFactory.channelEvent(ctx, raw), ctx.locals.gateway).catch(
             /* istanbul ignore next */ (err) => {
                 this.logger.error(
                     `Unable to send channel event ${requestID} to '${ctx.nodeID}' node.`,
@@ -425,21 +361,13 @@ export class SidecarTransit {
 
     public sendNodeInfo(nodeID: string, ctx: Context) {
         try {
-            const info = this.broker.getLocalNodeInfo();
-            const packet = new Packet(PacketType.PACKET_INFO, nodeID, {
-                services: info.services,
-                ipList: info.ipList,
-                hostname: info.hostname,
-                client: info.client,
-                config: info.config,
-                instanceID: this.broker.instanceID,
-                metadata: info.metadata,
-                seq: info.seq,
-                sidecarNodes: this.sidecar.registry.getNodeList(),
-            });
-            packet.extend(this.nodeID, '1');
-
-            ctx.locals.resolve(packet);
+            ctx.locals.resolve(
+                this.packetFactory.info(
+                    nodeID,
+                    this.broker.getLocalNodeInfo(),
+                    this.sidecar.registry.getNodeList(),
+                ),
+            );
         } catch (error) {
             this.logger.error(`Unable to send INFO packet to '${nodeID}' node.`, error);
 
@@ -451,25 +379,20 @@ export class SidecarTransit {
         }
     }
 
-    public requestHeartbeat(nodeID: string, gateway: NodeGateway) {
+    public requestHeartbeat(nodeID: string, gateway: Gateway) {
         this.logger.debug(`=> Send heartbeat request to ${nodeID} node.`);
-        const packet = new Packet(PacketType.PACKET_REQUEST_HEARTBEAT, nodeID, {});
-        return this.send(packet, new Gateway(gateway));
+        return this.send(this.packetFactory.requestHeartbeat(nodeID), gateway);
     }
 
-    public discoverNode(nodeID: string, gateway: NodeGateway) {
-        const packet = new Packet(PacketType.PACKET_DISCOVER, nodeID, {});
-        return this.send(packet, new Gateway(gateway));
+    public discoverNode(nodeID: string, gateway: Gateway) {
+        return this.send(this.packetFactory.discover(nodeID), gateway);
     }
 
-    public discoverNodeServices(nodeID: string, gateway: NodeGateway) {
-        const packet = new Packet(PacketType.PACKET_DISCOVER_SERVICES, nodeID, {});
-        return this.send(packet, new Gateway(gateway));
+    public discoverNodeServices(nodeID: string, gateway: Gateway) {
+        return this.send(this.packetFactory.discoverServices(nodeID), gateway);
     }
 
-    private send(packet: Packet<any>, gateway: Gateway) {
-        packet.extend(this.nodeID, '1');
-
+    private send(packet: Packet, gateway: Gateway) {
         const headers = new Headers();
         headers.set('content-type', 'application/json');
         headers.set('accept', 'application/json');

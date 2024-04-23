@@ -31,7 +31,7 @@ import './src/lab/index.js';
  */
 const brokerConfig: BrokerOptions = {
     // Namespace of nodes to segment your nodes on the same network.
-    namespace: '',
+    namespace: 'dev',
     // Unique node identifier. Must be unique in a namespace.
     nodeID: 'SIDECAR.V2',
     // Custom metadata store. Store here what you want. Accessing: `this.broker.metadata`
@@ -62,7 +62,7 @@ const brokerConfig: BrokerOptions = {
     // More info: https://moleculer.services/docs/0.14/networking.html
     // Note: During the development, you don't need to define it because all services will be loaded locally.
     // In production you can set it via `TRANSPORTER=nats://localhost:4222` environment variable.
-    // transporter: 'nats://192.168.5.243:4222', //"nats://localhost:4222",
+    transporter: 'nats://localhost:4222',
 
     // Define a cacher.
     // More info: https://moleculer.services/docs/0.14/caching.html
@@ -157,7 +157,7 @@ const brokerConfig: BrokerOptions = {
 
     // Enable/disable built-in metrics function. More info: https://moleculer.services/docs/0.14/metrics.html
     metrics: {
-        enabled: true,
+        enabled: false,
         // Available built-in reporters: "Console", "CSV", "Event", "Prometheus", "Datadog", "StatsD"
         reporter: [
             {
@@ -196,37 +196,30 @@ const brokerConfig: BrokerOptions = {
         enabled: true,
         // Available built-in exporters: "Console", "Datadog", "Event", "EventLegacy", "Jaeger", "Zipkin"
         exporter: {
-            type: 'Laboratory', // Console exporter is only for development!
-            options: {
-                // // Custom logger
-                // logger: null,
-                // // Using colors
-                // colors: true,
-                // // Width of row
-                // width: 100,
-                // // Gauge width in the row
-                // gaugeWidth: 40,
-            },
+            type: 'Laboratory',
         },
+        actions: true,
+        events: true,
+        stackTrace: true,
     },
 
     // Register custom middlewares
     middlewares: [
-        Channels.Middleware({
-            adapter: {
-                type: 'NATS',
-                options: {
-                    nats: {
-                        url: process.env.CHANNELS_ADAPTER_NATS,
-                        deadLettering: {
-                            enabled: true,
-                            queueName: 'DEAD_LETTER',
-                        },
-                    },
-                },
-            },
-        }),
-        Channels.Tracing(),
+        // Channels.Middleware({
+        //     adapter: {
+        //         type: 'NATS',
+        //         options: {
+        //             nats: {
+        //                 url: process.env.CHANNELS_ADAPTER_NATS,
+        //                 deadLettering: {
+        //                     enabled: true,
+        //                     queueName: 'DEAD_LETTER',
+        //                 },
+        //             },
+        //         },
+        //     },
+        // }),
+        // Channels.Tracing(),
     ],
 
     // Register custom REPL commands.

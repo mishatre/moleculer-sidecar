@@ -1,11 +1,10 @@
 import { Errors, GenericObject, ServiceSchema } from 'moleculer';
 
-import { NodeGateway } from './gateway';
-import { Node } from './registry/node';
+import { NodeGateway } from './gateway.js';
+import { Node } from './registry/node.js';
 
 export enum PacketType {
     PACKET_UNKNOWN = 'PACKET_UNKNOWN',
-    PACKET_ERROR = 'PACKET_ERROR',
 
     PACKET_REQUEST = 'PACKET_REQUEST',
     PACKET_RESPONSE = 'PACKET_RESPONSE',
@@ -25,11 +24,6 @@ export enum PacketType {
     PACKET_CHANNEL_EVENT = 'PACKET_CHANNEL_EVENT',
     PACKET_CHANNEL_EVENT_REQUEST = 'PACKET_CHANNEL_EVENT_REQUEST',
 }
-
-type AdditionalInfo = {
-    sender: string;
-    ver: string;
-};
 
 export type RequestPayload = {
     id: string;
@@ -96,7 +90,7 @@ export type InfoPayload = {
     };
     seq: number;
     sidecar?: ServiceSchema[];
-} & AdditionalInfo;
+};
 
 export type PingPayload = {
     time: number;
@@ -111,7 +105,6 @@ export type PongPayload = {
 
 export interface PayloadByPacketType {
     [PacketType.PACKET_UNKNOWN]: never;
-    [PacketType.PACKET_ERROR]: never;
 
     [PacketType.PACKET_REQUEST]: RequestPayload;
     [PacketType.PACKET_RESPONSE]: ResponsePayload;
@@ -137,34 +130,46 @@ export interface PayloadByPacketType {
 export type PacketTypeKeys = keyof PayloadByPacketType;
 
 export type RawPacket = {
-    type: string;
+    type: PacketTypeKeys;
     target: string | null;
-    payload?: any;
+    sender: string;
+    ver: string;
+    payload: PayloadByPacketType[PacketTypeKeys];
 };
 
 export const PROTOCOL_VERSION = '1';
 
-export class Packet<P extends PacketTypeKeys> {
-    constructor(
-        public type: P,
-        public target: string | null = null,
-        public payload: PayloadByPacketType[P] & { sender?: string; ver?: string },
-    ) {
-        if (!this.type) {
-            this.type = PacketType.PACKET_UNKNOWN as P;
+export class Packet<P extends PacketTypeKeys = PacketType.PACKET_UNKNOWN> {
+    public readonly type: P;
+    public readonly target: string | null;
+    public readonly sender: string;
+    public readonly ver: string;
+    public readonly payload: PayloadByPacketType[P];
+
+    #rawPacket: RawPacket;
+
+    constructor(rawPacket: RawPacket) {
+        if (!rawPacket.type) {
+            rawPacket.type = PacketType.PACKET_UNKNOWN;
         }
+        this.type = <P>rawPacket.type;
+        this.target = rawPacket.target;
+        this.sender = rawPacket.sender;
+        this.ver = rawPacket.ver;
+        this.payload = rawPacket.payload;
+        this.#rawPacket = rawPacket;
     }
 
-    public static fromRaw<P extends PacketTypeKeys>(value: RawPacket) {
+    public static fromRaw<P extends PacketTypeKeys>(rawPacket: RawPacket) {
         let type: P;
-        if (value.type in PacketType) {
-            type = <P>PacketType[value.type as keyof typeof PacketType];
+        if (rawPacket.type in PacketType) {
+            type = <P>PacketType[rawPacket.type as keyof typeof PacketType];
         } else {
             type = <P>PacketType.PACKET_UNKNOWN;
         }
 
         // Check payload
-        if (!value.payload) {
+        if (!rawPacket.payload) {
             throw new Errors.MoleculerServerError(
                 'Missing response payload.',
                 500,
@@ -173,34 +178,28 @@ export class Packet<P extends PacketTypeKeys> {
         }
 
         // Check protocol version
-        if (value.payload.ver !== PROTOCOL_VERSION) {
+        if (rawPacket.ver !== PROTOCOL_VERSION) {
             throw new Errors.ProtocolVersionMismatchError({
-                nodeID: value.payload.sender,
+                nodeID: rawPacket.sender,
                 actual: PROTOCOL_VERSION,
-                received: value.payload.ver,
+                received: rawPacket.ver,
             });
         }
 
-        return new Packet(type, value.target, value.payload);
+        return new Packet(rawPacket);
     }
 
     public static deserialize(value: string, deserializer?: any) {
-        return this.fromRaw(deserializer?.(value) ?? JSON.parse(value));
+        if (!deserializer) {
+            deserializer = JSON.parse;
+        }
+        return this.fromRaw(deserializer(value));
     }
 
     public serialize(serializator?: any) {
-        return (
-            serializator?.(this) ??
-            JSON.stringify({
-                type: this.type,
-                target: this.target,
-                payload: this.payload,
-            })
-        );
-    }
-
-    public extend(sender: string, ver: string) {
-        this.payload.sender = sender;
-        this.payload.ver = ver;
+        if (!serializator) {
+            serializator = JSON.stringify;
+        }
+        return serializator(this.#rawPacket);
     }
 }

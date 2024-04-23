@@ -42,7 +42,7 @@ export class Gateway {
         return new URL(join(this.path ?? '', this.BASIC_PATH), base);
     }
 
-    public authHeaders() {
+    public authHeaders(): Headers {
         const headers = new Headers();
 
         if (this.auth) {

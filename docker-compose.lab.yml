@@ -1,0 +1,18 @@
+
+services:
+  lab:
+    build: https://github.com/mishatre/moleculer-lab.git
+    environment:
+      - NODEID=lab
+      - NAMESPACE=dev
+      - TRANSPORTER=nats://nats:4222
+      - MOL_TRACING__EVENTS=true
+      - DOPPLER_TOKEN
+    ports:
+      - "3210:3210"
+    links:
+      - nats
+  nats:
+    image: nats:latest
+    ports:
+      - "4222:4222"

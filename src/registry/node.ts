@@ -1,7 +1,8 @@
 import _ from 'lodash';
 import { ServiceSchema } from 'moleculer';
 
-import { InfoPayload } from '../packet';
+import { Gateway } from '../gateway.js';
+import { InfoPayload } from '../packet.js';
 
 type ClientInfo = {
     type: string;
@@ -9,18 +10,6 @@ type ClientInfo = {
     moduleType: string;
     langVersion: string;
     langCompatibilityVersion: string;
-};
-
-type Gateway = {
-    endpoint: string;
-    port: number;
-    useSSL: boolean;
-    path?: string;
-    auth?:
-        | {
-              accessToken?: string;
-          }
-        | { username: string; password: string };
 };
 
 export type NodeInfo = {
@@ -70,7 +59,10 @@ export class Node {
         this.metadata = payload.metadata;
         this.client = payload.client || {};
 
-        this.gateway = payload.gateway || null;
+        this.gateway = null;
+        if (payload.gateway) {
+            this.gateway = new Gateway(payload.gateway);
+        }
 
         this.rawInfo = payload;
 

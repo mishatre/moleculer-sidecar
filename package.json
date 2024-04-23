@@ -1,15 +1,16 @@
 {
     "name": "moleculer-sidecar",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "description": "Moleculer integration for external services",
     "type": "module",
     "exports": "./build/services/sidecar.service.mjs",
     "bin": "./build/index.js",
     "scripts": {
-        "compose:up": "DOPPLER_TOKEN=\"$(doppler configs tokens create --project v2-sidecar --config dev api-v2-sidecar-token --plain --max-age 1m)\" docker compose -f ./docker/docker-compose.yml up",
+        "compose:up": "DOPPLER_TOKEN=\"$(doppler configs tokens create --project v2-sidecar --config dev api-v2-sidecar-token --plain --max-age 1m)\" docker compose -f ./docker-compose.yml up",
+        "compose:lab": "DOPPLER_TOKEN=\"$(doppler configs tokens create --project v2-sidecar --config dev api-v2-sidecar-token --plain --max-age 1m)\" docker compose -f ./docker-compose.lab.yml up",
         "build": "node ./scripts/build.mjs --sourcemap",
         "start": "moleculer-runner-esm --config ./moleculer.config.mjs ./build/index.service.mjs",
-        "start:dev": "tsx ./node_modules/moleculer/bin/moleculer-runner.mjs --config ./moleculer.config.ts --env --hot ./src/index.ts"
+        "start:dev": "tsx ./node_modules/moleculer/bin/moleculer-runner.mjs --config ./moleculer.config.ts --env --hot ./src/index.service.ts"
     },
     "author": "M.Tregub",
     "license": "MIT",

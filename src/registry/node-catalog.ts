@@ -1,9 +1,9 @@
 import _ from 'lodash';
 import { LoggerInstance, ServiceBroker } from 'moleculer';
 
-import { InfoPayload } from '../packet';
-import { Node } from './node';
-import SidecarRegistry from './registry';
+import { InfoPayload } from '../packet.js';
+import { Node } from './node.js';
+import SidecarRegistry from './registry.js';
 
 export class NodeCatalog {
     private registry: SidecarRegistry;
@@ -86,8 +86,8 @@ export class NodeCatalog {
      * @param {any} payload
      * @memberof NodeCatalog
      */
-    async processNodeInfo(payload: InfoPayload) {
-        const nodeID = payload.sender;
+    async processNodeInfo(sender: string, payload: InfoPayload) {
+        const nodeID = sender;
 
         let node = this.get(nodeID);
         let isNew = false;
@@ -108,7 +108,7 @@ export class NodeCatalog {
 
         // Refresh services if 'seq' is greater or it is a reconnected node
         if (needRegister && node.gateway) {
-            await this.registry.registerServices(node, node.gateway);
+            await this.registry.registerServices(node);
         }
 
         // Local notifications
