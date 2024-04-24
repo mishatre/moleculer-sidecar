@@ -47,7 +47,7 @@ export class PacketFactory {
     }
 
     public event(ctx: Context) {
-        return this.createPacket(PacketType.PACKET_REQUEST, ctx.endpoint ? ctx.nodeID : null, {
+        return this.createPacket(PacketType.PACKET_EVENT, ctx.endpoint ? ctx.nodeID : null, {
             id: ctx.id,
             event: ctx.eventName!,
             data: ctx.params,

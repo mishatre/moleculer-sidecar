@@ -1,4 +1,11 @@
-import { Context, Endpoint, Errors, LoggerInstance, ServiceBroker } from 'moleculer';
+import {
+    CallingOptions,
+    Context,
+    Endpoint,
+    Errors,
+    LoggerInstance,
+    ServiceBroker,
+} from 'moleculer';
 import { parseStringPromise } from 'xml2js';
 
 import { Gateway } from './gateway.js';
@@ -109,29 +116,13 @@ export class SidecarTransit {
                 });
             }
 
-            let endpoint;
-            if (payload.action.startsWith('$sidecar')) {
-                endpoint = this.broker._getLocalActionEndpoint(payload.action);
-            } else {
-                this.logger.warn(payload);
-                endpoint = this.broker.findNextActionEndpoint(payload.action);
-                this.logger.warn(endpoint);
-            }
-            if (endpoint instanceof Error) {
-                throw new Errors.ServiceNotFoundError({
-                    action: payload.action,
-                    nodeID: this.nodeID,
-                });
-            }
-
             // Recreate caller context
             const ctx = this.broker.ContextFactory.create(
                 this.broker,
-                endpoint,
+                undefined as unknown as Endpoint,
                 {},
                 { parentCtx: reqCtx },
             );
-            ctx.setEndpoint(endpoint);
             ctx.id = payload.id;
             ctx.setParams(payload.params, this.broker.options.contextParamsCloning);
             // ctx.parentID = payload.parentID;
@@ -140,18 +131,15 @@ export class SidecarTransit {
             ctx.meta = payload.meta || {};
             ctx.level = payload.level;
             ctx.tracing = payload.tracing;
-            ctx.nodeID = endpoint.id;
 
-            if (payload.timeout != null) ctx.options.timeout = payload.timeout;
-
-            const p = endpoint.action?.handler?.(ctx) as Promise<any> & { ctx: Context };
-            // Pointer to Context
-            p.ctx = ctx;
-
-            meta = ctx.meta;
+            if (payload.timeout != null) {
+                ctx.options.timeout = payload.timeout;
+            }
 
             try {
-                data = await p;
+                data = await this.broker.call(payload.action, payload.params, {
+                    ctx,
+                } as unknown as CallingOptions);
             } catch (err) {
                 error = err;
             }

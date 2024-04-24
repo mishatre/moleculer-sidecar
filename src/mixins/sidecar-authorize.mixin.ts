@@ -9,7 +9,7 @@ import path from 'node:path';
 
 import { parseReqSigV4, validateMessage } from '../uitls/aws-signature.js';
 import { getRootDir } from '../uitls/index.js';
-import { IncomingMessage } from './sidecarApiGatewayMixin.js';
+import { IncomingMessage } from './sidecar-gateway.mixin.js';
 
 interface SidecarAuthorizeSettings extends ServiceSettingSchema {}
 

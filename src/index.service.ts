@@ -7,8 +7,8 @@ import pkgJSON from '../package.json';
 import { Gateway } from './gateway.js';
 import sidecarApiGatewayMixin, {
     SidecarApiGatewayMixinSettings,
-} from './mixins/sidecarApiGatewayMixin.js';
-import sidecarAuthorizeMixin from './mixins/sidecarAuthorizeMixin.js';
+} from './mixins/sidecar-gateway.mixin.js';
+import sidecarAuthorizeMixin from './mixins/sidecar-authorize.mixin.js';
 import SidecarRegistry from './registry/registry.js';
 import { SidecarTransit } from './transit.js';
 

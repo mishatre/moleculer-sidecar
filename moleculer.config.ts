@@ -3,6 +3,7 @@ import type { BrokerOptions, ServiceRegistry } from 'moleculer';
 import { Errors } from 'moleculer';
 
 import './src/lab/index.js';
+import InterNamespaceMiddleware from './src/middlewares/inter-namespace.middleware.js';
 
 /**
  * Moleculer ServiceBroker configuration file
@@ -205,6 +206,18 @@ const brokerConfig: BrokerOptions = {
 
     // Register custom middlewares
     middlewares: [
+        InterNamespaceMiddleware([
+            {
+                brokerOptions: {
+                    namespace: 'veamosl-services',
+                    transporter: 'nats://nats:4222',
+                    // Number of seconds to send heartbeat packet to other nodes.
+                    heartbeatInterval: 100,
+                    // Number of seconds to wait before setting node to unavailable status.
+                    heartbeatTimeout: 300,
+                },
+            },
+        ]),
         // Channels.Middleware({
         //     adapter: {
         //         type: 'NATS',
