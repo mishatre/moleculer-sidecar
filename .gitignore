@@ -8,3 +8,4 @@ dist
 nats
 
 .DS_Store
+out

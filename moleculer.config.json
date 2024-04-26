@@ -22,7 +22,7 @@
         "*": "info"
     },
 
-    "transporter": "nats://localhost:4222",
+    "transporter": null,
 
     "cacher": "Memory",
 
