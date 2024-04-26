@@ -80,7 +80,7 @@ export default class SidecarAuthorize extends MoleculerService<SidecarAuthorizeS
                 if (savedSecretKey && savedSecretKey !== secretKey) {
                     throw new Errors.MoleculerError('INVALID_ACCESS_KEY', 400);
                 }
-                await this.db.put(accessKey, secretKey);
+                await this.auth_db.put(accessKey, secretKey);
                 return true;
             })
             .catch((error) => {
@@ -188,6 +188,21 @@ export default class SidecarAuthorize extends MoleculerService<SidecarAuthorizeS
         this.auth_db = new Level(this.auth_dbPath, { valueEncoding: 'json' });
         this.auth_db.open(() => {
             this.logger.info('Auth database connected');
+            this.auth_db.get('INITIALIZED').catch(async (error) => {
+                if (error.code === 'LEVEL_NOT_FOUND') {
+                    this.logger.info('Initializing auth database');
+
+                    const { accessKey, secretKey } = await this.actions.generateKeyPair({});
+                    await this.actions.storeKey({ accessKey, secretKey });
+                    await this.auth_db.put('INITIALIZED', '');
+                    this.logger.warn(
+                        `Created default:
+accessKey: '${accessKey}' 
+secretKey: '${secretKey}' 
+They will be shown only once.`,
+                    );
+                }
+            });
         });
     }
 

@@ -11,21 +11,26 @@ RUN apt-get update && apt-get install -y apt-transport-https ca-certificates cur
     apt-get update && \
     apt-get -y install doppler
 
-COPY . .
-
 FROM base AS prod-deps
+COPY ./package.json ./package.json
+COPY ./pnpm-lock.yaml ./pnpm-lock.yaml
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
 
 FROM base AS build
+COPY ./package.json ./package.json
+COPY ./pnpm-lock.yaml ./pnpm-lock.yaml
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+COPY . .
 RUN pnpm run build
 
 FROM base
 WORKDIR /usr/src/app
 
+COPY ./package.json ./package.json
+COPY ./pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=prod-deps /usr/src/app/node_modules ./node_modules
-COPY --from=build /usr/src/app/build ./build
-COPY --from=build /usr/src/app/build/moleculer.config.mjs ./moleculer.config.mjs
+COPY --from=build /usr/src/app/build .
+COPY ./moleculer.config.json ./moleculer.config.json
 
 EXPOSE 5103
 CMD [ "doppler", "run", "--", "pnpm", "run", "start" ]

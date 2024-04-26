@@ -14,9 +14,7 @@ async function printSize(fileName) {
 async function main() {
     // clean build folder
     await emptyDir(outputDir);
-
     build('./src/index.service.ts', { outfile: `${outputDir}/index.service.mjs` });
-    build('./moleculer.config.ts', { outfile: `${outputDir}/moleculer.config.mjs` });
 }
 
 async function build(entrypoint, options) {

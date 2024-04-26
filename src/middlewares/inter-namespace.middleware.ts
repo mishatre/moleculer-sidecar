@@ -1,4 +1,11 @@
-import type { BrokerOptions, GenericObject, Middleware, ServiceBroker } from 'moleculer';
+import _ from 'lodash';
+import {
+    BrokerOptions,
+    CallMiddlewareHandler,
+    GenericObject,
+    Middleware,
+    ServiceBroker,
+} from 'moleculer';
 
 function isString(str: unknown): str is string {
     if (str != null && typeof str.valueOf() === 'string') {
@@ -23,14 +30,17 @@ export default function InterNamespaceMiddleware(
             for (const nsOpts of opts) {
                 const ns = nsOpts?.brokerOptions.namespace ?? 'N/A';
                 thisBroker.logger.warn(`Create inter namespace broker for '${ns} namespace...'`);
-                const brokerOpts = {
-                    ...nsOpts.brokerOptions,
-                    ...broker.options,
-                    nodeID: `${ns}-api-${Math.random().toString(36).slice(2, 15)}${Math.random().toString(36).slice(2, 15)}`,
-                } as BrokerOptions;
+                const brokerOpts = _.defaultsDeep(
+                    {},
+                    nsOpts.brokerOptions,
+                    {
+                        nodeID: `${ns}-api-${Math.random().toString(36).slice(2, 15)}${Math.random().toString(36).slice(2, 15)}`,
+                    },
+                    broker.options,
+                ) as BrokerOptions;
                 brokerOpts.middlewares = [];
-                // @ts-expect-error
-                const brokerService = new thisBroker.constructor(brokerOpts);
+
+                const brokerService = new ServiceBroker(brokerOpts);
 
                 nsOpts.servicesPath?.forEach((path) => brokerService.loadService(path));
 
@@ -39,39 +49,27 @@ export default function InterNamespaceMiddleware(
         },
 
         async started() {
-            thisBroker.logger.warn('Start inter namespace broker...');
             return Promise.all(Object.values(brokers).map(async (b) => b.start()));
         },
 
         async stopped() {
-            thisBroker.logger.warn('Stop inter namespace broker...');
             return Promise.all(Object.values(brokers).map(async (b) => b.stop()));
         },
 
-        call(next: (actionName: string, params: any, options: GenericObject) => any) {
-            return function (actionName: string, params: any, options = {}) {
+        call(next: CallMiddlewareHandler) {
+            return function (actionName: string, params: GenericObject, options: GenericObject) {
                 if (isString(actionName) && actionName.includes('@')) {
                     const [action, namespace] = actionName.split('@');
-
                     if (brokers[namespace]) {
-                        // @ts-expect-error
-                        const { ctx, parentCtx, ...others } = options;
                         thisBroker.logger.warn(
-                            'Call inter namespace broker...',
-                            actionName,
-                            params,
-                            others,
+                            `Call '${actionName}' action in '${namespace}' namespace...`,
                         );
                         return brokers[namespace].call(action, params, options);
-                    }
-
-                    if (namespace === thisBroker.namespace) {
+                    } else if (namespace === thisBroker.namespace) {
                         return next(action, params, options);
                     }
-
                     throw new Error(`Unknown namespace: ${namespace}`);
                 }
-
                 return next(actionName, params, options);
             };
         },

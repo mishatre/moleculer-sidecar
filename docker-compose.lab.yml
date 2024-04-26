@@ -15,11 +15,9 @@ services:
   nats:
     image: nats:latest
     command:
-      - -js
-      - --name=dev-local
-      - --cluster_name=NATS-dev
-      - --cluster=nats://0.0.0.0:5222
-      - --routes=nats://ruser:T0pS3cr3t@192.168.101.121:5222
+      - --config=/tmp/server.conf
+    volumes:
+      - ./nats/server.conf:/tmp/server.conf
     ports:
       - "4222:4222"
       - "5222:5222"

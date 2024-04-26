@@ -389,8 +389,6 @@ export class SidecarTransit {
             headers.set(key, value);
         }
 
-        this.logger.warn(packet);
-
         return fetch(gateway.url(), {
             method: 'POST',
             headers,
@@ -398,7 +396,9 @@ export class SidecarTransit {
         })
             .then(async (response) => {
                 if (!response.ok) {
-                    throw new Errors.ServiceNotAvailableError({
+                    throw new Errors.RequestRejectedError({
+                        packet,
+                        gateway,
                         statusText: response.statusText,
                         status: response.status,
                         text: await response.text(),
