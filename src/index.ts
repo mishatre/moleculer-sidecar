@@ -133,7 +133,10 @@ const options = new Command()
     .parse(process.argv)
     .opts();
 
-await loadEnvFile(options.envfile);
+if (options.env || options.envfile) {
+    await loadEnvFile(options.envfile);
+}
+
 const configFile =
     process.env['MOLECULER_CONFIG'] || options.config || options.configfile
         ? await loadConfigFile(process.env['MOLECULER_CONFIG'] || options.configfile)
@@ -183,6 +186,8 @@ if (process.env.CHANNELS_ADAPTER_NATS) {
         Channels.Tracing(),
     );
 }
+
+console.dir(config);
 
 const broker = new ServiceBroker(Object.assign({}, config));
 broker.createService(SidecarService);

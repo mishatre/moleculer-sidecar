@@ -9,7 +9,7 @@
         "compose:up": "DOPPLER_TOKEN=\"$(doppler configs tokens create --project v2-sidecar --config dev api-v2-sidecar-token --plain --max-age 1m)\" docker compose -f ./docker-compose.yml up",
         "compose:lab": "DOPPLER_TOKEN=\"$(doppler configs tokens create --project v2-sidecar --config dev api-v2-sidecar-token --plain --max-age 1m)\" docker compose -f ./docker-compose.lab.yml up",
         "build": "node ./scripts/build.mjs --sourcemap",
-        "start": "node ./index.mjs",
+        "start": "node ./build/index.mjs",
         "start:dev": "tsx ./src/index.ts"
     },
     "author": "M.Tregub",

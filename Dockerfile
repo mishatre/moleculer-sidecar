@@ -29,7 +29,7 @@ WORKDIR /usr/src/app
 COPY ./package.json ./package.json
 COPY ./pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=prod-deps /usr/src/app/node_modules ./node_modules
-COPY --from=build /usr/src/app/build .
+COPY --from=build /usr/src/app/build ./build
 COPY ./moleculer.config.json ./moleculer.config.json
 
 EXPOSE 5103
