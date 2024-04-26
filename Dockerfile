@@ -33,4 +33,5 @@ COPY --from=build /usr/src/app/build ./build
 COPY ./moleculer.config.json ./moleculer.config.json
 
 EXPOSE 5103
-CMD [ "doppler", "run", "--", "pnpm", "run", "start" ]
+ENTRYPOINT [ "doppler", "run", "--", "node", "./build/index.mjs" ]
+CMD [ "--config" ]
