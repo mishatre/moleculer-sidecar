@@ -1,19 +1,22 @@
-import { Level } from 'level';
 import _ from 'lodash';
+import { Low } from 'lowdb';
+import { JSONFilePreset } from 'lowdb/node';
 import { Action, Created, Method, Service, Started, Stopped } from 'moldecor';
 import { Context, Errors, Service as MoleculerService, ServiceSettingSchema } from 'moleculer';
 import ApiGateway from 'moleculer-web';
 import { randomBytes } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
-import path from 'node:path';
 
 import { parseReqSigV4, validateMessage } from '../uitls/aws-signature.js';
-import { getRootDir } from '../uitls/index.js';
+import { getDatabasePath, initDatabaseCatalog } from '../uitls/db.js';
 import { IncomingMessage } from './sidecar-gateway.mixin.js';
 
 interface SidecarAuthorizeSettings extends ServiceSettingSchema {}
 
 const WebErrors = ApiGateway.Errors;
+
+type Database = {
+    keys: { [key: string]: string };
+};
 
 @Service({
     name: 'sidecarAuthorize',
@@ -21,7 +24,7 @@ const WebErrors = ApiGateway.Errors;
 })
 export default class SidecarAuthorize extends MoleculerService<SidecarAuthorizeSettings> {
     private auth_dbPath!: string;
-    private auth_db!: Level<string, string>;
+    private auth_db!: Low<Database>;
 
     @Action({
         name: 'verifyRequest',
@@ -80,7 +83,9 @@ export default class SidecarAuthorize extends MoleculerService<SidecarAuthorizeS
                 if (savedSecretKey && savedSecretKey !== secretKey) {
                     throw new Errors.MoleculerError('INVALID_ACCESS_KEY', 400);
                 }
-                await this.auth_db.put(accessKey, secretKey);
+                await this.auth_db.update((data) => {
+                    data.keys[accessKey] = secretKey;
+                });
                 return true;
             })
             .catch((error) => {
@@ -96,18 +101,19 @@ export default class SidecarAuthorize extends MoleculerService<SidecarAuthorizeS
         },
         visibility: 'private',
     })
-    protected deleteKey(ctx: Context<{ accessKey: string }, any>) {
+    protected async deleteKey(ctx: Context<{ accessKey: string }, any>) {
         const { accessKey } = ctx.params;
-        return this.auth_db
-            .del(accessKey)
-            .then(async () => {
-                await this.broker.cacher?.del(`$auth.getStoredSecretKey:${accessKey}`);
-                return true;
-            })
-            .catch((error) => {
-                ctx.broker.logger.error(error);
-                return false;
+
+        try {
+            await this.auth_db.update((data) => {
+                delete data.keys[accessKey];
             });
+            this.broker.cacher?.del(`$auth.getStoredSecretKey:${accessKey}`);
+            return true;
+        } catch (error) {
+            ctx.broker.logger.error(error);
+            return false;
+        }
     }
 
     @Action({
@@ -134,13 +140,7 @@ export default class SidecarAuthorize extends MoleculerService<SidecarAuthorizeS
     })
     protected getStoredSecretKey(ctx: Context<{ accessKey: string }>) {
         const { accessKey } = ctx.params;
-        return this.auth_db.get(accessKey).catch((error) => {
-            if (error.code === 'LEVEL_NOT_FOUND') {
-                return undefined;
-            } else {
-                ctx.broker.logger.error(error);
-            }
-        });
+        return this.auth_db.data.keys[accessKey];
     }
 
     // Sidecar gateway authorize method
@@ -175,42 +175,35 @@ export default class SidecarAuthorize extends MoleculerService<SidecarAuthorizeS
      */
     @Created
     public created() {
-        this.auth_dbPath = path.join(process.env.DATA ?? path.join(getRootDir(), 'data'), 'auth');
-        mkdirSync(this.auth_dbPath, { recursive: true });
+        initDatabaseCatalog();
+        this.auth_dbPath = getDatabasePath('auth.json');
     }
 
     /**
      * Service started lifecycle event handler
      */
     @Started
-    public started() {
+    public async started() {
         // Create a database
-        this.auth_db = new Level(this.auth_dbPath, { valueEncoding: 'json' });
-        this.auth_db.open(() => {
-            this.logger.info('Auth database connected');
-            this.auth_db.get('INITIALIZED').catch(async (error) => {
-                if (error.code === 'LEVEL_NOT_FOUND') {
-                    this.logger.info('Initializing auth database');
+        this.auth_db = await JSONFilePreset(this.auth_dbPath, { keys: {} });
+        console.log(1);
+        if (Object.keys(this.auth_db.data.keys).length === 0) {
+            this.logger.info('Initializing auth database');
 
-                    const { accessKey, secretKey } = await this.actions.generateKeyPair({});
-                    await this.actions.storeKey({ accessKey, secretKey });
-                    await this.auth_db.put('INITIALIZED', '');
-                    this.logger.warn(
-                        `Created default:
+            const { accessKey, secretKey } = await this.actions.generateKeyPair({});
+            await this.actions.storeKey({ accessKey, secretKey });
+            this.logger.warn(
+                `Created default:
 accessKey: '${accessKey}' 
 secretKey: '${secretKey}' 
 They will be shown only once.`,
-                    );
-                }
-            });
-        });
+            );
+        }
     }
 
     /**
      * Service stopped lifecycle event handler
      */
     @Stopped
-    protected stopped() {
-        return this.auth_db.close();
-    }
+    protected stopped() {}
 }

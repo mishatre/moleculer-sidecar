@@ -1,20 +1,25 @@
 import { Channel } from '@moleculer/channels/types/src/index.js';
-import { mkdirSync } from 'fs';
 import kleur from 'kleur';
-import { Level } from 'level';
 import _ from 'lodash';
+import { Low } from 'lowdb';
+import { JSONFilePreset } from 'lowdb/node';
 import { Context, LoggerInstance, ServiceBroker, ServiceSchema } from 'moleculer';
-import path from 'path';
 
 import SidecarService from '../index.service.js';
 import { InfoPayload } from '../packet.js';
-import { getRootDir } from '../uitls/index.js';
+import { getDatabasePath, initDatabaseCatalog } from '../uitls/db.js';
 import { NodeCatalog } from './node-catalog.js';
 import { Node } from './node.js';
 
+type Database = {
+    nodes: {
+        [key: string]: InfoPayload;
+    };
+};
+
 export default class SidecarRegistry {
     private dbPath: string;
-    private db!: Level<string, InfoPayload>;
+    private db!: Low<Database>;
     private pendingWrites: Promise<any>[] = [];
 
     private opts: {
@@ -41,8 +46,8 @@ export default class SidecarRegistry {
     private initialized: boolean;
 
     constructor(sidecar: SidecarService) {
-        this.dbPath = path.join(process.env.DATA ?? path.join(getRootDir(), 'data'), 'registry');
-        mkdirSync(this.dbPath, { recursive: true });
+        initDatabaseCatalog();
+        this.dbPath = getDatabasePath('registry.json');
 
         this.sidecar = sidecar;
         this.broker = this.sidecar.broker;
@@ -76,25 +81,32 @@ export default class SidecarRegistry {
                     return;
                 }
                 if (node === undefined) {
-                    const promise = this.db
-                        .del(nodeID)
-                        .then(() => {
-                            this.logger.warn(`Node '${nodeID}' deleted from database.`);
-                        })
-                        .catch((err) => {
-                            this.logger.error(err);
-                        });
-                    this.pendingWrites.push(promise);
+                    this.pendingWrites.push(
+                        this.db
+                            .update((data) => {
+                                delete data.nodes[nodeID];
+                            })
+                            .then(() => {
+                                this.logger.warn(`Node '${nodeID}' deleted from database.`);
+                            })
+                            .catch((err) => {
+                                this.logger.error(err);
+                            }),
+                    );
                 } else if (node.rawInfo) {
-                    const promise = this.db
-                        .put(nodeID, node.rawInfo)
-                        .then(() => {
-                            this.logger.warn(`Node '${nodeID}' saved to database.`);
-                        })
-                        .catch((err) => {
-                            this.logger.error(err);
-                        });
-                    this.pendingWrites.push(promise);
+                    const rawInfo = node.rawInfo;
+                    this.pendingWrites.push(
+                        this.db
+                            .update((data) => {
+                                data.nodes[nodeID] = rawInfo;
+                            })
+                            .then(() => {
+                                this.logger.warn(`Node '${nodeID}' saved to database.`);
+                            })
+                            .catch((err) => {
+                                this.logger.error(err);
+                            }),
+                    );
                 }
             },
         );
@@ -102,16 +114,17 @@ export default class SidecarRegistry {
 
     public async init() {
         // Create a database
-        this.db = new Level(this.dbPath, { valueEncoding: 'json' });
+        this.db = await JSONFilePreset(this.dbPath, { nodes: {} });
 
         this.logger.info('Sidecar registry initializing');
         const pendingPromises = [];
-        for await (const [nodeID, infoPayload] of this.db.iterator()) {
+        for await (const [nodeID, infoPayload] of Object.entries(this.db.data.nodes)) {
             if (this.nodes.has(nodeID)) {
                 this.logger.error(`Detected duplicated node ${nodeID}. Skip it...`);
                 continue;
             }
             this.logger.warn(`Loading node '${nodeID}' from database.`);
+            console.log(infoPayload);
             const promise = this.nodes.processNodeInfo(nodeID, infoPayload);
             pendingPromises.push(promise);
         }
@@ -130,7 +143,6 @@ export default class SidecarRegistry {
         if (this.pendingWrites.length) {
             await Promise.all(this.pendingWrites);
         }
-        this.db.close();
     }
 
     // Heartbeat
