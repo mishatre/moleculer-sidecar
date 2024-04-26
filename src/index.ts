@@ -55,11 +55,15 @@ async function loadConfigFile(configfile?: string): Promise<GenericObject> {
 
     if (!filePath) {
         filePath = import.meta.resolve(path.resolve(process.cwd(), 'moleculer.config.json'));
+    } else {
+        filePath = filePath.startsWith('/') ? filePath : '/' + filePath;
     }
 
     if (filePath) {
         try {
-            const mod = await import(filePath.startsWith('/') ? filePath : '/' + filePath);
+            const mod = await import(filePath, {
+                with: { type: 'JSON' },
+            });
             return mod.default;
         } catch (_) {}
     }
@@ -186,8 +190,6 @@ if (process.env.CHANNELS_ADAPTER_NATS) {
         Channels.Tracing(),
     );
 }
-
-console.dir(config);
 
 const broker = new ServiceBroker(Object.assign({}, config));
 broker.createService(SidecarService);

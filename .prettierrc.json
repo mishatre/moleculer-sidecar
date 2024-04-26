@@ -4,9 +4,10 @@
     "singleQuote": true,
     "bracketSameLine": true,
     "trailingComma": "all",
+    "importAttributes": true,
     "plugins": ["@trivago/prettier-plugin-sort-imports"],
     "importOrder": ["<THIRD_PARTY_MODULES>", "^[./]"],
-    "importOrderParserPlugins": ["typescript", "decorators"],
+    "importOrderParserPlugins": ["typescript", "decorators", "importAssertions"],
     "importOrderSeparation": true,
     "importOrderSortSpecifiers": true
 }
