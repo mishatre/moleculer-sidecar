@@ -62,7 +62,7 @@ async function loadConfigFile(configfile?: string): Promise<GenericObject> {
     if (filePath) {
         try {
             const mod = await import(filePath, {
-                with: { type: 'JSON' },
+                with: { type: 'json' },
             });
             return mod.default;
         } catch (_) {}
