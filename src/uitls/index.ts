@@ -56,5 +56,8 @@ export function resolveFilePath(filePath: string) {
     try {
         return import.meta.resolve(filePath);
     } catch (_) {}
+    try {
+        return require.resolve(filePath);
+    } catch (_) {}
     return null;
 }

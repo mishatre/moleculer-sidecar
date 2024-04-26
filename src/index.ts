@@ -54,7 +54,7 @@ async function loadConfigFile(configfile?: string): Promise<GenericObject> {
     }
 
     if (!filePath) {
-        filePath = import.meta.resolve(path.resolve(process.cwd(), 'moleculer.config.json'));
+        filePath = resolveFilePath(path.resolve(process.cwd(), 'moleculer.config.json'));
     } else {
         filePath = filePath.startsWith('/') ? filePath : '/' + filePath;
     }
@@ -65,6 +65,10 @@ async function loadConfigFile(configfile?: string): Promise<GenericObject> {
                 with: { type: 'json' },
             });
             return mod.default;
+        } catch (_) {}
+
+        try {
+            return require(filePath);
         } catch (_) {}
     }
 
@@ -137,64 +141,68 @@ const options = new Command()
     .parse(process.argv)
     .opts();
 
-if (options.env || options.envfile) {
-    await loadEnvFile(options.envfile);
-}
+async function start() {
+    if (options.env || options.envfile) {
+        await loadEnvFile(options.envfile);
+    }
 
-const configFile =
-    process.env['MOLECULER_CONFIG'] || options.config || options.configfile
-        ? await loadConfigFile(process.env['MOLECULER_CONFIG'] || options.configfile)
-        : {};
+    const configFile =
+        process.env['MOLECULER_CONFIG'] || options.config || options.configfile
+            ? await loadConfigFile(process.env['MOLECULER_CONFIG'] || options.configfile)
+            : {};
 
-const config = mergeOptions(configFile);
-if (!config.middlewares) {
-    config.middlewares = [];
-}
-if (options.inter) {
-    config.middlewares.push(
-        InterNamespaceMiddleware([
-            {
-                brokerOptions: {
-                    nodeID: process.env['INTER_NODEID'],
-                    namespace: process.env['INTER_NAMESPACE'],
-                    transporter: process.env['INTER_TRANSPORTER'],
-                    logLevel: {
-                        BROKER: 'warn',
-                        REGISTRY: 'warn',
-                        TRACER: 'warn',
-                        TRANSPORTER: 'trace',
-                        '*': 'trace',
+    const config = mergeOptions(configFile);
+    if (!config.middlewares) {
+        config.middlewares = [];
+    }
+    if (options.inter) {
+        config.middlewares.push(
+            InterNamespaceMiddleware([
+                {
+                    brokerOptions: {
+                        nodeID: process.env['INTER_NODEID'],
+                        namespace: process.env['INTER_NAMESPACE'],
+                        transporter: process.env['INTER_TRANSPORTER'],
+                        logLevel: {
+                            BROKER: 'warn',
+                            REGISTRY: 'warn',
+                            TRACER: 'warn',
+                            TRANSPORTER: 'trace',
+                            '*': 'trace',
+                        },
+                        requestTimeout: 0,
                     },
-                    requestTimeout: 0,
                 },
-            },
-        ]),
-    );
-}
-if (process.env.CHANNELS_ADAPTER_NATS) {
-    config.middlewares.push(
-        Channels.Middleware({
-            adapter: {
-                type: 'NATS',
-                options: {
-                    nats: {
+            ]),
+        );
+    }
+    if (process.env.CHANNELS_ADAPTER_NATS) {
+        config.middlewares.push(
+            Channels.Middleware({
+                adapter: {
+                    type: 'NATS',
+                    options: {
+                        serializer: 'CBOR',
                         url: process.env.CHANNELS_ADAPTER_NATS,
+                        // @ts-expect-error
                         deadLettering: {
                             enabled: true,
                             queueName: 'DEAD_LETTER',
                         },
                     },
                 },
-            },
-        }),
-        Channels.Tracing(),
-    );
+            }),
+            Channels.Tracing(),
+        );
+    }
+
+    const broker = new ServiceBroker(Object.assign({}, config));
+    broker.createService(SidecarService);
+
+    return broker.start();
 }
 
-const broker = new ServiceBroker(Object.assign({}, config));
-broker.createService(SidecarService);
-
-await broker.start().catch((err) => {
+start().catch((err) => {
     logger.error(err);
     process.exit(1);
 });
