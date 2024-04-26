@@ -14,7 +14,7 @@ async function printSize(fileName) {
 async function main() {
     // clean build folder
     await emptyDir(outputDir);
-    build('./src/index.service.ts', { outfile: `${outputDir}/index.service.mjs` });
+    build('./src/index.ts', { outfile: `${outputDir}/index.mjs` });
 }
 
 async function build(entrypoint, options) {

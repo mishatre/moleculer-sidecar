@@ -125,12 +125,12 @@ const options = new Command()
     .option('-c, --config', 'Load the configuration from a file')
     .option('--configfile <configfile>', 'Load a specified configuration file')
     .option('--inter', 'Use inter-namespace middleware')
-    .parse(process.argv)
     .version(
-        `sidecar: ${pkgInfo.version}\n moleculer: ${ServiceBroker.MOLECULER_VERSION}`,
+        `sidecar: ${pkgInfo.version}\nmoleculer: ${ServiceBroker.MOLECULER_VERSION}`,
         '-v, --version',
         'Output the current version',
     )
+    .parse(process.argv)
     .opts();
 
 await loadEnvFile(options.envfile);
