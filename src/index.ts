@@ -182,12 +182,14 @@ async function start() {
                 adapter: {
                     type: 'NATS',
                     options: {
-                        serializer: 'CBOR',
-                        url: process.env.CHANNELS_ADAPTER_NATS,
+                        serializer: config.serializer,
                         // @ts-expect-error
                         deadLettering: {
                             enabled: true,
                             queueName: 'DEAD_LETTER',
+                        },
+                        nats: {
+                            url: process.env.CHANNELS_ADAPTER_NATS,
                         },
                     },
                 },

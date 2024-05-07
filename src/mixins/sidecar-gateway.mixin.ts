@@ -3,7 +3,6 @@ import kleur from 'kleur';
 import _ from 'lodash';
 import { Action, Created, Method, Service, Started, Stopped } from 'moldecor';
 import {
-    ActionSchema,
     Context,
     Errors,
     GenericObject,
@@ -46,8 +45,6 @@ type ServerResponseExt = {
 
 export type IncomingMessage = (Http2ServerRequest | http.IncomingMessage) & IncomingRequestExt;
 type ServerResponse = (Http2ServerResponse | http.ServerResponse) & ServerResponseExt;
-
-type ActionSchemaWithResponseHeaders = ActionSchema & { responseHeaders?: Record<string, string> };
 
 interface SidecarApiGatewaySettings extends ServiceSettingSchema {
     port: string | number;
@@ -108,25 +105,25 @@ class NotFoundError extends Errors.MoleculerError {
     }
 }
 
-/**
- * Service unavailable HTTP error
- *
- * @class ForbiddenError
- * @extends {Error}
- */
-class ServiceUnavailableError extends Errors.MoleculerError {
-    /**
-     * Creates an instance of ForbiddenError.
-     *
-     * @param {String} type
-     * @param {any} data
-     *
-     * @memberOf ForbiddenError
-     */
-    constructor(type = '', data?: unknown) {
-        super('Service unavailable', 503, type, data);
-    }
-}
+// /**
+//  * Service unavailable HTTP error
+//  *
+//  * @class ForbiddenError
+//  * @extends {Error}
+//  */
+// class ServiceUnavailableError extends Errors.MoleculerError {
+//     /**
+//      * Creates an instance of ForbiddenError.
+//      *
+//      * @param {String} type
+//      * @param {any} data
+//      *
+//      * @memberOf ForbiddenError
+//      */
+//     constructor(type = '', data?: unknown) {
+//         super('Service unavailable', 503, type, data);
+//     }
+// }
 
 function convertToMoleculerError(error: unknown): error is Errors.MoleculerError {
     if (!(error instanceof Errors.MoleculerError)) {
@@ -206,7 +203,7 @@ export default class SidecarApiGateway extends MoleculerService<SidecarApiGatewa
             tags: {
                 params: ['req.url', 'req.method'],
             },
-            spanName: (ctx) => {
+            spanName: (ctx: Context) => {
                 const { req } = (ctx as DefaultContext).params;
                 return `${req.method} ${req.url}`;
             },

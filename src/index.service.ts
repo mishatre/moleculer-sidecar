@@ -1,14 +1,14 @@
 import _ from 'lodash';
-import { Action, Created, Method, Service, Started, Stopped } from 'moldecor';
+import { Action, Channel, Created, Method, Service, Started, Stopped } from 'moldecor';
 import { ActionSchema, Context, Service as MoleculerService } from 'moleculer';
 import EventEmitter from 'node:events';
 
 import pkgJSON from '../package.json';
 import { Gateway } from './gateway.js';
+import sidecarAuthorizeMixin from './mixins/sidecar-authorize.mixin.js';
 import sidecarApiGatewayMixin, {
     SidecarApiGatewayMixinSettings,
 } from './mixins/sidecar-gateway.mixin.js';
-import sidecarAuthorizeMixin from './mixins/sidecar-authorize.mixin.js';
 import SidecarRegistry from './registry/registry.js';
 import { SidecarTransit } from './transit.js';
 
@@ -127,6 +127,11 @@ export default class SidecarService extends MoleculerService<SidecarApiGatewayMi
         return this.registry.getServiceList();
     }
 
+    @Channel({
+        name: 'test',
+    })
+    public testChannel() {}
+
     @Method
     protected reformatError(error: Error) {
         return this.transit.packetFactory.response(
@@ -140,7 +145,7 @@ export default class SidecarService extends MoleculerService<SidecarApiGatewayMi
     @Started
     public async started() {
         await this.registry.init();
-        this.logger.warn('Sidecar service started');
+        this.logger.info('Sidecar service started');
     }
 
     @Created

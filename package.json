@@ -10,7 +10,7 @@
         "compose:lab": "DOPPLER_TOKEN=\"$(doppler configs tokens create --project v2-sidecar --config dev api-v2-sidecar-token --plain --max-age 1m)\" docker compose -f ./docker-compose.lab.yml up",
         "build": "node ./scripts/build.mjs --sourcemap",
         "start": "node ./build/index.mjs",
-        "start:dev": "tsx ./src/index.ts"
+        "start:dev": "tsx ./src/index.ts --config"
     },
     "author": "M.Tregub",
     "license": "MIT",
@@ -34,6 +34,7 @@
         "cbor-x": "^1.5.8",
         "commander": "^12.0.0",
         "dotenv": "^16.4.5",
+        "jaeger-client": "^3.19.0",
         "kafka-node": "^5.0.0",
         "kleur": "^4.1.5",
         "lodash": "^4.17.21",
@@ -43,13 +44,7 @@
         "moleculer-web": "^0.10.7",
         "nats": "^2.19.0",
         "protobufjs": "^7.2.6",
-        "thrift": "^0.20.0",
+        "thrift": "^0.16.0",
         "xml2js": "^0.6.2"
-    },
-    "pkg": {
-        "targets": [
-            "node20-win-arm64"
-        ],
-        "outputPath": "dist"
     }
 }

@@ -131,7 +131,8 @@ class LabEventExporter extends Exporters.Base {
         );
     }
     spanFinished(span: Span) {
-        this.queue.push(span), this.timer || this.flush();
+        this.queue.push(span);
+        this.timer || this.flush();
     }
     async flush() {
         if (0 == this.queue.length) {

@@ -55,7 +55,9 @@ export function normalizeEnvValue(value: unknown) {
 export function resolveFilePath(filePath: string) {
     try {
         return import.meta.resolve(filePath);
-    } catch (_) {}
+    } catch (error) {
+        console.log(error);
+    }
     try {
         return require.resolve(filePath);
     } catch (_) {}

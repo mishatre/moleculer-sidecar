@@ -13,7 +13,7 @@ export type NodeGateway = {
 };
 
 export class Gateway {
-    private BASIC_PATH = '/hs/moleculer/v1/message';
+    private BASIC_PATH = '/v1/message';
 
     private port?: number;
     private useSSL: boolean;

@@ -161,11 +161,8 @@ export class Packet<P extends PacketTypeKeys = PacketType.PACKET_UNKNOWN> {
     }
 
     public static fromRaw<P extends PacketTypeKeys>(rawPacket: RawPacket) {
-        let type: P;
-        if (rawPacket.type in PacketType) {
-            type = <P>PacketType[rawPacket.type as keyof typeof PacketType];
-        } else {
-            type = <P>PacketType.PACKET_UNKNOWN;
+        if (!(rawPacket.type in PacketType)) {
+            rawPacket.type = <P>PacketType.PACKET_UNKNOWN;
         }
 
         // Check payload

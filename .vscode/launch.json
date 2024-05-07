@@ -12,10 +12,11 @@
             "type": "node"
         },
         {
-            "command": "pnpm run start:dev",
+            "command": "nvm use 22 && node --run start:dev -- -c",
             "name": "Run pnpm start:dev",
             "request": "launch",
-            "type": "node-terminal"
+            "type": "node-terminal",
+            "nodeVersionHint": 22
         }
     ]
 }

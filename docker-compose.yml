@@ -5,21 +5,51 @@ volumes:
   sidecar_data:
 
 services:
-  sidecar:
-    image: sidecar
-    build: 
-      context: .
-      dockerfile: Dockerfile
+  # sidecar:
+  #   image: sidecar
+  #   build: 
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   command: --config
+  #   environment:
+  #     - NODEID=v2.sidecar
+  #     - NAMESPACE=dev
+  #     - TRANSPORTER=nats://nats:4222
+  #     - DOPPLER_TOKEN
+  #   volumes:
+  #     - sidecar_data:/usr/src/app/data
+  #     - ./moleculer.config.json:/usr/src/app/moleculer.config.json
+  #   ports:
+  #     - "5103:5103"
+  #   links:
+  #     - nats
+
+  lab:
+    build: https://github.com/mishatre/moleculer-lab.git
     environment:
-      - NODEID=v2.sidecar
+      - NODEID=lab
+      - NAMESPACE=dev
       - TRANSPORTER=nats://nats:4222
+      - MOL_TRACING__EVENTS=true
       - DOPPLER_TOKEN
-    volumes:
-      - sidecar_data:/usr/src/app/data
     ports:
-      - "5103:5103"
+      - "3210:3210"
     links:
       - nats
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.56
+    ports:
+      - "14269:14269"
+      - "14268:14268"
+      - "14250"
+      - "9411:9411"
+      - "4318:4318"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+    restart: on-failure
+
   nats:
     image: nats:latest
     command: -js

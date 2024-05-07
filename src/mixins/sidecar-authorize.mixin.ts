@@ -186,7 +186,6 @@ export default class SidecarAuthorize extends MoleculerService<SidecarAuthorizeS
     public async started() {
         // Create a database
         this.auth_db = await JSONFilePreset(this.auth_dbPath, { keys: {} });
-        console.log(1);
         if (Object.keys(this.auth_db.data.keys).length === 0) {
             this.logger.info('Initializing auth database');
 

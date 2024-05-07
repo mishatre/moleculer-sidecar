@@ -124,7 +124,6 @@ export default class SidecarRegistry {
                 continue;
             }
             this.logger.warn(`Loading node '${nodeID}' from database.`);
-            console.log(infoPayload);
             const promise = this.nodes.processNodeInfo(nodeID, infoPayload);
             pendingPromises.push(promise);
         }

@@ -8,21 +8,15 @@
         "options": {
             "colors": true,
             "moduleColors": false,
-            "formatter": "short",
+            "formatter": "full",
             "objectPrinter": null,
             "autoPadding": false
         }
     },
 
-    "logLevel": {
-        "BROKER": "warn",
-        "REGISTRY": "warn",
-        "TRACER": "warn",
-        "METRICS": "warn",
-        "*": "info"
-    },
+    "logLevel": "debug",
 
-    "transporter": null,
+    "transporter": "nats://nats.sidecar.orb.local:4222",
 
     "cacher": "Memory",
 
@@ -88,9 +82,17 @@
 
     "tracing": {
         "enabled": true,
-        "exporter": {
-            "type": "Laboratory"
-        },
+        "exporter": [
+            {
+                "type": "Jaeger",
+                "options": {
+                    "endpoint": "http://jaeger.sidecar.orb.local:14268/api/traces"
+                }
+            },
+            {
+                "type": "Laboratory"
+            }
+        ],
         "actions": true,
         "events": true,
         "stackTrace": true
