@@ -4,7 +4,6 @@ import { action, created, defineSettings, method, service, started, stopped } fr
 import {
     type Context,
     Errors,
-    type Logger,
     Service as MoleculerService,
     type ServiceSchema,
 } from 'moleculer';
@@ -14,41 +13,12 @@ import Sequelize from 'sequelize';
 import { NotFoundError, ServiceUnavailableError } from '../errors.js';
 import ApiGateway from '../mixins/api-gateway.js';
 import AuthorizeMixin from '../mixins/authorize.js';
+import { type ServerSettings, serverSettings } from '../server.js';
 import type { AuthInfo, ConnectionInfo } from '../types.js';
 
-interface Settings {
-    port: string | number;
-    // Exposed IP
-    ip: string;
-
-    // Use HTTPS server
-    https:
-        | null
-        | false
-        | {
-              key: string;
-              cert: string;
-          };
-    // Use HTTP2 server (experimental)
-    http2: boolean;
-    // HTTP Server Timeout
-    httpServerTimeout: number | null;
-    // Request Timeout. More info: https://github.com/moleculerjs/moleculer-web/issues/206
-    requestTimeout: number;
+interface Settings extends ServerSettings {
     //
     path: string;
-    //
-    logging: boolean;
-    // Log each request (default to "info" level)
-    logRequest: keyof Logger | null;
-    // Log the request ctx.params (default to "debug" level)
-    logRequestParams: keyof Logger | null;
-    // Log each response (default to "info" level)
-    logResponse: keyof Logger | null;
-    // Log the response data (default to disable)
-    logResponseData: keyof Logger | null;
-    // If set to true, it will log 4xx client errors, as well
-    log4XXResponses: boolean;
 }
 
 interface RegisterParams {
@@ -84,32 +54,10 @@ interface UnregisterParams {
 }
 
 const settings = defineSettings<Partial<Settings>>({
-    // Exposed port
-    port: Number(process.env.PORT) || 5103,
-
-    // Exposed IP
-    ip: process.env.IP || '0.0.0.0',
+    ...serverSettings,
 
     // Sidecar path
     path: '/sidecar',
-
-    //
-    logging: true,
-
-    // Log each request (default to "info" level)
-    logRequest: 'info',
-
-    // Log the request ctx.params (default to "debug" level)
-    logRequestParams: 'debug',
-
-    // Log each response (default to "info" level)
-    logResponse: 'info',
-
-    // Log the response data (default to disable)
-    logResponseData: null,
-
-    // If set to true, it will log 4xx client errors, as well
-    log4XXResponses: false,
 });
 
 @service({

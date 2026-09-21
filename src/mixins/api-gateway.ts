@@ -1,70 +1,32 @@
-import http from 'node:http';
-import http2 from 'node:http2';
-import https from 'node:https';
-import type { AddressInfo } from 'node:net';
-import os from 'node:os';
-import Stream, { PassThrough } from 'node:stream';
+import { PassThrough } from 'node:stream';
 import bodyParser, { type BodyParser } from 'body-parser';
 import { isStream } from 'is-stream';
-import kleur from 'kleur';
 import _ from 'lodash';
 import { action, created, defineSettings, method, service, started, stopped } from 'moldecor';
-import {
-    type CallingOptions,
-    type Context,
-    Errors,
-    type Logger,
-    Service as MoleculerService,
-} from 'moleculer';
+import { type CallingOptions, type Context, Errors, Service as MoleculerService } from 'moleculer';
 import { is } from 'type-is';
 import {
     convert1CErrorToMoleculerError,
     convertToMoleculerError,
-    isMoleculerError,
     MethodNotAllowed,
-    NotFoundError,
     RequestRejectedError,
     RequestTimeoutError,
-    ServiceUnavailableError,
     UnsupportedMediaType,
 } from '../errors.js';
 import Packet from '../packet.js';
+import {
+    HttpServer,
+    type ServerRequest,
+    type ServerSettings,
+    serverSettings,
+    setServer,
+} from '../server.js';
 import type { AuthInfo, ConnectionInfo, IncomingMessage, ServerResponse } from '../types.js';
-import { buildUrl, parseRequestURL } from '../utils/utils.js';
+import { buildUrl } from '../utils/utils.js';
 
-interface Settings {
-    port: string | number;
-    // Exposed IP
-    ip: string;
-
-    // Use HTTPS server
-    https:
-        | null
-        | false
-        | {
-              key: string;
-              cert: string;
-          };
-    // Use HTTP2 server (experimental)
-    http2: boolean;
-    // HTTP Server Timeout
-    httpServerTimeout: number | null;
-    // Request Timeout. More info: https://github.com/moleculerjs/moleculer-web/issues/206
-    requestTimeout: number;
+interface Settings extends ServerSettings {
     //
     path: string;
-    //
-    logging: boolean;
-    // Log each request (default to "info" level)
-    logRequest: keyof Logger | null;
-    // Log the request ctx.params (default to "debug" level)
-    logRequestParams: keyof Logger | null;
-    // Log each response (default to "info" level)
-    logResponse: keyof Logger | null;
-    // Log the response data (default to disable)
-    logResponseData: keyof Logger | null;
-    // If set to true, it will log 4xx client errors, as well
-    log4XXResponses: boolean;
 }
 
 interface RestParams {
@@ -72,33 +34,13 @@ interface RestParams {
     res: ServerResponse;
 }
 
-const settings = defineSettings<Partial<Settings>>({
-    // Exposed port
-    port: Number(process.env.PORT) || 5103,
+const GATEWAY_PATH = '/sidecar';
 
-    // Exposed IP
-    ip: process.env.IP || '0.0.0.0',
+const settings = defineSettings<Partial<Settings>>({
+    ...serverSettings,
 
     // Sidecar path
-    path: '/sidecar',
-
-    //
-    logging: true,
-
-    // Log each request (default to "info" level)
-    logRequest: 'info',
-
-    // Log the request ctx.params (default to "debug" level)
-    logRequestParams: 'debug',
-
-    // Log each response (default to "info" level)
-    logResponse: 'info',
-
-    // Log the response data (default to disable)
-    logResponseData: null,
-
-    // If set to true, it will log 4xx client errors, as well
-    log4XXResponses: false,
+    path: GATEWAY_PATH,
 });
 
 @service({
@@ -113,8 +55,7 @@ const settings = defineSettings<Partial<Settings>>({
     settings,
 })
 export default class ApiGateway extends MoleculerService<typeof settings> {
-    private server!: http.Server | http2.Http2Server;
-    private isHTTPS!: boolean;
+    private server!: HttpServer;
 
     private jsonParser!: ReturnType<BodyParser['json']>;
 
@@ -340,89 +281,21 @@ export default class ApiGateway extends MoleculerService<typeof settings> {
     }
 
     /**
-     * Encode response data
-     *
-     * @param {HttpIncomingMessage} req
-     * @param {HttpResponse} res
-     * @param {any} data
+     * Request handler mounted at the gateway path.
      */
     @method
-    private encodeResponse(req: IncomingMessage, res: ServerResponse, data: unknown) {
-        return JSON.stringify(data);
-    }
-
-    /**
-     * HTTP request handler. It is called from native NodeJS HTTP server.
-     */
-    @method
-    private async httpHandler(req: IncomingMessage, res: ServerResponse) {
-        // Set pointers to service
-        req.$startTime = process.hrtime();
-
-        res.locals = res.locals || {};
-        req.originalUrl = req.url;
-
-        const parsed = parseRequestURL(req);
-        let url = parsed.url;
-
-        // Trim trailing slash
-        if (url.length > 1 && url.endsWith('/')) {
-            url = url.slice(0, -1);
-        }
-
-        req.parsedUrl = url;
-
-        if (!req.query) {
-            req.query = parsed.query;
-        }
-
-        this.logRequest(req);
-
+    private async handleRequest({ req, res }: ServerRequest) {
         // Prevent connection to any other endpoints
         if (req.method !== 'POST') {
-            return this.sendError(req, res, new MethodNotAllowed());
-        }
-        if (req.parsedUrl !== this.settings.path) {
-            return this.send404(req, res);
+            return this.server.sendError(req, res, new MethodNotAllowed());
         }
 
         const options: CallingOptions = {};
         try {
             await this.actions.rest({ req, res }, options);
         } catch (error: unknown) {
-            this.errorHandler(req, res, error);
+            this.server.errorHandler(req, res, error);
         }
-    }
-
-    /**
-     * Send 404 response
-     *
-     * @param {HttpIncomingMessage} req
-     * @param {HttpResponse} res
-     */
-    @method
-    private send404(req: IncomingMessage, res: ServerResponse) {
-        this.sendError(req, res, new NotFoundError());
-    }
-
-    @method
-    private errorHandler(req: IncomingMessage, res: ServerResponse, error: unknown) {
-        // don't log client side errors unless it's configured
-        if (this.settings.log4XXResponses) {
-            if (error instanceof Errors.MoleculerError && !_.inRange(error.code, 400, 500)) {
-                this.logger.error(
-                    '   Request error!',
-                    error.name,
-                    ':',
-                    error.message,
-                    '\n',
-                    error.stack,
-                    '\nData:',
-                    error.data,
-                );
-            }
-        }
-        this.sendError(req, res, error);
     }
 
     @method
@@ -454,163 +327,21 @@ export default class ApiGateway extends MoleculerService<typeof settings> {
         }
     }
 
-    /**
-     * Send an error response
-     *
-     * @param {HttpIncomingMessage} req
-     * @param {HttpResponse} res
-     * @param {Error} err
-     */
-    @method
-    private sendError(req: IncomingMessage, res: ServerResponse, error: unknown) {
-        if (res.headersSent) {
-            this.logger.warn('Headers have already sent', req.url, error);
-            return undefined;
-        }
-
-        if (!error || !(error instanceof Error)) {
-            res.writeHead(500);
-            res.end('Internal Server Error');
-
-            this.logResponse(req, res);
-            return undefined;
-        }
-
-        // Type guard
-        if (!isMoleculerError(error)) {
-            error = convertToMoleculerError(error);
-            // MOOOOOORE TYPE GUARDS
-            if (!isMoleculerError(error)) {
-                res.writeHead(500);
-                res.end('Internal Server Error');
-
-                this.logResponse(req, res);
-                return undefined;
-            }
-        }
-
-        // Return with the error as JSON object
-        res.setHeader('content-type', 'application/json; charset=utf-8');
-
-        const code = _.isNumber(error.code) && _.inRange(error.code, 400, 599) ? error.code : 500;
-        res.writeHead(code);
-        const errObj = this.reformatError(error, req, res);
-        res.end(errObj !== undefined ? this.encodeResponse(req, res, errObj) : '');
-
-        this.logResponse(req, res);
-
-        return undefined;
-    }
-
-    @method
-    private reformatError(error: Errors.MoleculerError, req: IncomingMessage, res: ServerResponse) {
-        return _.pick(error, ['name', 'message', 'code', 'type', 'data', 'stack']);
-    }
-
-    @method
-    private logRequest(req: IncomingMessage) {
-        if (!this.settings.logging) {
-            return;
-        }
-
-        if (this.settings.logRequest && this.settings.logRequest in this.logger) {
-            this.logger[this.settings.logRequest](`=> ${req.method} ${req.originalUrl}`);
-        }
-    }
-
-    @method
-    private logResponse(req: IncomingMessage, res: ServerResponse, data?: unknown) {
-        let time = '';
-        if (req.$startTime) {
-            const diff = process.hrtime(req.$startTime);
-            const duration = (diff[0] + diff[1] / 1e9) * 1000;
-            if (duration > 1000) {
-                time = kleur.red(`[+${Number(duration / 1000).toFixed(3)} s]`);
-            } else {
-                time = kleur.grey(`[+${Number(duration).toFixed(3)} ms]`);
-            }
-        }
-
-        if (this.settings.logResponse && this.settings.logResponse in this.logger)
-            this.logger[this.settings.logResponse](
-                `<= ${this.coloringStatusCode(res.statusCode)} ${req.method} ${kleur.bold(
-                    req.originalUrl ?? '',
-                )} ${time}`,
-            );
-
-        if (this.settings.logResponseData && this.settings.logResponseData in this.logger) {
-            this.logger[this.settings.logResponseData]('  Data:', data);
-        }
-    }
-
-    @method
-    private coloringStatusCode(code: number) {
-        if (code >= 500) return kleur.red().bold(code);
-        if (code >= 400 && code < 500) return kleur.red().bold(code);
-        if (code >= 300 && code < 400) return kleur.cyan().bold(code);
-        if (code >= 200 && code < 300) return kleur.green().bold(code);
-
-        return code;
-    }
-
-    @method
-    private createServer() {
-        if (this.server) {
-            return;
-        }
-
-        this.isHTTPS = false;
-        if (this.settings.https && this.settings.https.key && this.settings.https.cert) {
-            if (this.settings.http2) {
-                this.server = http2.createSecureServer(
-                    this.settings.https,
-                    this.httpHandler as unknown as Parameters<typeof http2.createSecureServer>[1],
-                );
-                this.isHTTPS = true;
-            } else {
-                this.server = https.createServer(
-                    this.settings.https,
-                    this.httpHandler as unknown as Parameters<typeof https.createServer>[1],
-                );
-            }
-        } else {
-            if (this.settings.http2) {
-                this.server = http2.createServer(
-                    this.httpHandler as Parameters<typeof http2.createServer>[0],
-                );
-                this.isHTTPS = true;
-            } else {
-                this.server = http.createServer(
-                    this.httpHandler as Parameters<typeof http.createServer>[0],
-                );
-            }
-        }
-
-        // HTTP server timeout
-        // if (this.settings.httpServerTimeout) {
-        //     this.logger.debug(
-        //         'Override default http(s) server timeout:',
-        //         this.settings.httpServerTimeout,
-        //     );
-        //     this.server.setTimeout(this.settings.httpServerTimeout);
-        // }
-
-        // if ('requestTimeout' in this.server) {
-        //     this.server.requestTimeout = this.settings.requestTimeout;
-        //     this.logger.debug(
-        //         'Setting http(s) server request timeout to:',
-        //         this.settings.requestTimeout,
-        //     );
-        // }
-    }
-
     @created
     public created() {
-        // Create a new HTTP/HTTPS/HTTP2 server instance
-        this.createServer();
-        this.server.on('error', (error: unknown) => {
-            this.logger.error('Server error', error);
-        });
+        this.server = new HttpServer(this.settings, this.logger, 'Sidecar gateway');
+        this.server.mount(
+            this.settings.path ?? GATEWAY_PATH,
+            (request) => this.handleRequest(request),
+            'exact',
+        );
+        // Paths outside the gateway mount keep the pre-refactor precedence.
+        this.server.setFallback(({ req, res }) =>
+            req.method === 'POST'
+                ? this.server.send404(req, res)
+                : this.server.sendError(req, res, new MethodNotAllowed()),
+        );
+        setServer(this.server);
 
         this.jsonParser = bodyParser.json();
 
@@ -618,38 +349,12 @@ export default class ApiGateway extends MoleculerService<typeof settings> {
     }
 
     @started
-    public started() {
-        return new this.Promise<void>((resolve) => {
-            this.server.listen(Number(this.settings.port), this.settings.ip, () => {
-                const addr = this.server.address() as AddressInfo;
-                const listenAddr =
-                    addr.address == '0.0.0.0' && os.platform() == 'win32'
-                        ? 'localhost'
-                        : addr.address;
-                this.logger.info(
-                    `Sidecar gateway listening on ${
-                        this.isHTTPS ? 'https' : 'http'
-                    }://${listenAddr}:${addr.port}`,
-                );
-                resolve();
-            });
-        });
+    public async started() {
+        await this.server.listen();
     }
 
     @stopped
     public stopped() {
-        if (!this.server.listening) {
-            return this.Promise.resolve();
-        }
-        return new this.Promise<void>((resolve, reject) => {
-            this.server.close((error: unknown) => {
-                if (error) {
-                    return reject(error);
-                }
-
-                this.logger.info('Sidecar gateway stopped!');
-                resolve();
-            });
-        });
+        return this.server.close();
     }
 }
