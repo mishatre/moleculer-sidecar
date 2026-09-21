@@ -1,7 +1,7 @@
-import { action, event, service, started } from 'moldecor';
+import { action, defineSettings, event, service, started } from 'moldecor';
 import { type Context, Service as MoleculerService } from 'moleculer';
 
-type Settings = {};
+const settings = defineSettings({});
 
 @service({
     name: 'sidecar.prod.test',
@@ -12,9 +12,9 @@ type Settings = {};
         $official: false,
     },
 
-    settings: {},
+    settings,
 })
-export default class SidecarTestService extends MoleculerService<Settings> {
+export default class SidecarTestService extends MoleculerService<typeof settings> {
     // @event({
     //     name: 'infobase.change',
 

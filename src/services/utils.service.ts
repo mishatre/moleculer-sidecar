@@ -1,8 +1,8 @@
-import { action, service, started } from 'moldecor';
+import { action, defineSettings, service, started } from 'moldecor';
 import { type Context, Service as MoleculerService } from 'moleculer';
 import { parse } from 'yaml';
 
-type Settings = {};
+const settings = defineSettings({});
 
 @service({
     name: '$sidecar.utils',
@@ -13,9 +13,9 @@ type Settings = {};
         $official: false,
     },
 
-    settings: {},
+    settings,
 })
-export default class SidecarUtilsService extends MoleculerService<Settings> {
+export default class SidecarUtilsService extends MoleculerService<typeof settings> {
     @action({
         name: 'parseYAML',
         params: {

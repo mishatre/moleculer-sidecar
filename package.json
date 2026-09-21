@@ -39,7 +39,7 @@
         "is-stream": "^4.0.1",
         "kleur": "^4.1.5",
         "lodash": "^4.17.21",
-        "moldecor": "github:mishatre/moldecor#heads/next",
+        "moldecor": "^2.0.0-rc.3",
         "moleculer": "0.14.35",
         "moleculer-db": "^0.8.28",
         "moleculer-db-adapter-sequelize": "^0.2.19",

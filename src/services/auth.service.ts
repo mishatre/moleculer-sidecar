@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import kleur from 'kleur';
-import { action, method, service, started } from 'moldecor';
+import { action, defineSettings, method, service, started } from 'moldecor';
 import { type Context, Errors, Service as MoleculerService } from 'moleculer';
 import DbService from 'moleculer-db';
 import SequelizeDbAdapter from 'moleculer-db-adapter-sequelize';
@@ -8,7 +8,7 @@ import Sequelize from 'sequelize';
 import type { IncomingMessage } from '../types.js';
 import { parseReqSigV4, validateMessage } from '../utils/aws-signature.js';
 
-type Settings = {};
+const settings = defineSettings({});
 
 export interface VerifyRequestParams {
     req: IncomingMessage & { originalUrl: string; method: string };
@@ -64,7 +64,7 @@ function generateRandomString(length: number, charset: string): string {
         $official: false,
     },
 
-    settings: {},
+    settings,
 
     mixins: [DbService],
     adapter: new SequelizeDbAdapter({
@@ -99,7 +99,7 @@ function generateRandomString(length: number, charset: string): string {
         remove: false,
     },
 })
-export default class SidecarAuthService extends MoleculerService<Settings> {
+export default class SidecarAuthService extends MoleculerService<typeof settings> {
     private adapter!: SequelizeDbAdapter & { db: Sequelize.Sequelize };
     @action({
         name: 'verifyRequest',

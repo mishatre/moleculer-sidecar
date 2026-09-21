@@ -8,7 +8,7 @@ import bodyParser, { type BodyParser } from 'body-parser';
 import { isStream } from 'is-stream';
 import kleur from 'kleur';
 import _ from 'lodash';
-import { action, created, method, service, started, stopped } from 'moldecor';
+import { action, created, defineSettings, method, service, started, stopped } from 'moldecor';
 import {
     type CallingOptions,
     type Context,
@@ -72,6 +72,35 @@ interface RestParams {
     res: ServerResponse;
 }
 
+const settings = defineSettings<Partial<Settings>>({
+    // Exposed port
+    port: Number(process.env.PORT) || 5103,
+
+    // Exposed IP
+    ip: process.env.IP || '0.0.0.0',
+
+    // Sidecar path
+    path: '/sidecar',
+
+    //
+    logging: true,
+
+    // Log each request (default to "info" level)
+    logRequest: 'info',
+
+    // Log the request ctx.params (default to "debug" level)
+    logRequestParams: 'debug',
+
+    // Log each response (default to "info" level)
+    logResponse: 'info',
+
+    // Log the response data (default to disable)
+    logResponseData: null,
+
+    // If set to true, it will log 4xx client errors, as well
+    log4XXResponses: false,
+});
+
 @service({
     name: 'api-gateway',
 
@@ -81,36 +110,9 @@ interface RestParams {
         $official: false,
     },
 
-    settings: {
-        // Exposed port
-        port: Number(process.env.PORT) || 5103,
-
-        // Exposed IP
-        ip: process.env.IP || '0.0.0.0',
-
-        // Sidecar path
-        path: '/sidecar',
-
-        //
-        logging: true,
-
-        // Log each request (default to "info" level)
-        logRequest: 'info',
-
-        // Log the request ctx.params (default to "debug" level)
-        logRequestParams: 'debug',
-
-        // Log each response (default to "info" level)
-        logResponse: 'info',
-
-        // Log the response data (default to disable)
-        logResponseData: null,
-
-        // If set to true, it will log 4xx client errors, as well
-        log4XXResponses: false,
-    },
+    settings,
 })
-export default class ApiGateway extends MoleculerService<Settings> {
+export default class ApiGateway extends MoleculerService<typeof settings> {
     private server!: http.Server | http2.Http2Server;
     private isHTTPS!: boolean;
 

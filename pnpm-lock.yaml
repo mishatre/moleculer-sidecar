@@ -39,8 +39,8 @@ importers:
         specifier: ^4.17.21
         version: 4.17.21
       moldecor:
-        specifier: github:mishatre/moldecor#heads/next
-        version: https://codeload.github.com/mishatre/moldecor/tar.gz/7d35cdc90b7eb42c1cae3e85e462a7c5a65dda05(moleculer@0.14.35(cbor-x@1.6.0)(debug@4.4.0)(encoding@0.1.13)(nats@2.29.3))
+        specifier: ^2.0.0-rc.3
+        version: 2.0.0-rc.3(moleculer@0.14.35(cbor-x@1.6.0)(debug@4.4.0)(encoding@0.1.13)(nats@2.29.3))
       moleculer:
         specifier: 0.14.35
         version: 0.14.35(cbor-x@1.6.0)(debug@4.4.0)(encoding@0.1.13)(nats@2.29.3)
@@ -992,9 +992,8 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  moldecor@https://codeload.github.com/mishatre/moldecor/tar.gz/7d35cdc90b7eb42c1cae3e85e462a7c5a65dda05:
-    resolution: {tarball: https://codeload.github.com/mishatre/moldecor/tar.gz/7d35cdc90b7eb42c1cae3e85e462a7c5a65dda05}
-    version: 2.0.0-rc.0
+  moldecor@2.0.0-rc.3:
+    resolution: {integrity: sha512-16Ymsft3/IxQcCuYLZwOymjW8g2gD9VsZgWGJghq5WoC2+txRxp4g2kkUQ3R1LOVRtctskdBtd1mWl4H9EeGYA==}
     engines: {node: '>=22'}
     peerDependencies:
       moleculer: ^0.14.35 || ^0.15.0
@@ -2426,7 +2425,7 @@ snapshots:
 
   mkdirp@1.0.4: {}
 
-  moldecor@https://codeload.github.com/mishatre/moldecor/tar.gz/7d35cdc90b7eb42c1cae3e85e462a7c5a65dda05(moleculer@0.14.35(cbor-x@1.6.0)(debug@4.4.0)(encoding@0.1.13)(nats@2.29.3)):
+  moldecor@2.0.0-rc.3(moleculer@0.14.35(cbor-x@1.6.0)(debug@4.4.0)(encoding@0.1.13)(nats@2.29.3)):
     dependencies:
       moleculer: 0.14.35(cbor-x@1.6.0)(debug@4.4.0)(encoding@0.1.13)(nats@2.29.3)
 

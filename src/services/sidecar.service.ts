@@ -1,6 +1,6 @@
 import kleur from 'kleur';
 import _ from 'lodash';
-import { action, created, method, service, started, stopped } from 'moldecor';
+import { action, created, defineSettings, method, service, started, stopped } from 'moldecor';
 import {
     type Context,
     Errors,
@@ -83,6 +83,35 @@ interface UnregisterParams {
     publicationID: 'string';
 }
 
+const settings = defineSettings<Partial<Settings>>({
+    // Exposed port
+    port: Number(process.env.PORT) || 5103,
+
+    // Exposed IP
+    ip: process.env.IP || '0.0.0.0',
+
+    // Sidecar path
+    path: '/sidecar',
+
+    //
+    logging: true,
+
+    // Log each request (default to "info" level)
+    logRequest: 'info',
+
+    // Log the request ctx.params (default to "debug" level)
+    logRequestParams: 'debug',
+
+    // Log each response (default to "info" level)
+    logResponse: 'info',
+
+    // Log the response data (default to disable)
+    logResponseData: null,
+
+    // If set to true, it will log 4xx client errors, as well
+    log4XXResponses: false,
+});
+
 @service({
     name: '$sidecar',
 
@@ -92,34 +121,7 @@ interface UnregisterParams {
         $official: false,
     },
 
-    settings: {
-        // Exposed port
-        port: Number(process.env.PORT) || 5103,
-
-        // Exposed IP
-        ip: process.env.IP || '0.0.0.0',
-
-        // Sidecar path
-        path: '/sidecar',
-
-        //
-        logging: true,
-
-        // Log each request (default to "info" level)
-        logRequest: 'info',
-
-        // Log the request ctx.params (default to "debug" level)
-        logRequestParams: 'debug',
-
-        // Log each response (default to "info" level)
-        logResponse: 'info',
-
-        // Log the response data (default to disable)
-        logResponseData: null,
-
-        // If set to true, it will log 4xx client errors, as well
-        log4XXResponses: false,
-    },
+    settings,
 
     dependencies: ['$sidecar.auth', '$sidecar.utils'],
 
@@ -162,7 +164,7 @@ interface UnregisterParams {
         remove: false,
     },
 })
-export default class SidecarService extends MoleculerService<Settings> {
+export default class SidecarService extends MoleculerService<typeof settings> {
     private adapter!: SequelizeDbAdapter & { db: Sequelize.Sequelize };
     declare protected send: ApiGateway['send'];
 
