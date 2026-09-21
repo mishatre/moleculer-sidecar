@@ -5,6 +5,7 @@ import { type Context, Errors, Service as MoleculerService } from 'moleculer';
 import DbService from 'moleculer-db';
 import SequelizeDbAdapter from 'moleculer-db-adapter-sequelize';
 import Sequelize from 'sequelize';
+import { NotFoundError } from '../errors.js';
 import type { IncomingMessage } from '../types.js';
 import { parseReqSigV4, validateMessage } from '../utils/aws-signature.js';
 
@@ -19,11 +20,19 @@ export interface GetStoredSecretKeyParams {
 }
 
 export type VerifyRequestResponse = boolean;
-export type GetStoredSecretKeyResponse = string;
+export type GetStoredSecretKeyResponse = string | undefined;
 export type GenerateAccessKeyResponse = {
     accessKey: string;
     secretKey: string;
 };
+
+export interface AccessKeyInfo {
+    accessKey: string;
+}
+
+export interface RevokeAccessKeyParams {
+    accessKey: string;
+}
 
 interface CredentialsOptions {
     accessKeyLength?: number;
@@ -125,7 +134,7 @@ export default class SidecarAuthService extends MoleculerService<typeof settings
             throw error;
         }
 
-        const secretKey = await this.actions.getStoredSecretKey<Promise<string>>(
+        const secretKey = await this.actions.getStoredSecretKey<Promise<string | undefined>>(
             {
                 accessKey: message.accessKey,
             },
@@ -158,9 +167,9 @@ export default class SidecarAuthService extends MoleculerService<typeof settings
     ): Promise<GetStoredSecretKeyResponse> {
         const { accessKey } = ctx.params;
 
-        const record = (await this.adapter.findById(accessKey)) as any;
+        const record = (await this.adapter.findById(accessKey)) as { secretKey: string } | null;
 
-        return record.secretKey;
+        return record?.secretKey;
     }
 
     @action({
@@ -174,9 +183,57 @@ export default class SidecarAuthService extends MoleculerService<typeof settings
         return pair;
     }
 
+    @action({
+        name: 'listAccessKeys',
+        visibility: 'protected',
+    })
+    protected async listAccessKeys(ctx: Context): Promise<AccessKeyInfo[]> {
+        const records = (await this.adapter.find({ query: {} })) as Array<{ accessKey: string }>;
+
+        return records
+            .map((record) => ({ accessKey: record.accessKey }))
+            .sort((left, right) => left.accessKey.localeCompare(right.accessKey));
+    }
+
+    @action({
+        name: 'revokeAccessKey',
+        params: {
+            accessKey: 'string',
+        },
+        visibility: 'protected',
+    })
+    protected async revokeAccessKey(ctx: Context<RevokeAccessKeyParams>): Promise<boolean> {
+        const { accessKey } = ctx.params;
+        if (!(await this.adapter.findById(accessKey))) {
+            throw new NotFoundError('ACCESS_KEY_NOT_FOUND');
+        }
+
+        // Drop the cached secret first: a revoked key must stop verifying now.
+        await this.invalidateSecretKeyCache(accessKey, ctx);
+        await this.adapter.removeById(accessKey);
+
+        return true;
+    }
+
     @method
     private generateKeyPair() {
         return generateAccessCredentials();
+    }
+
+    @method
+    private async invalidateSecretKeyCache(accessKey: string, ctx: Context) {
+        const cacher = this.broker.cacher;
+        if (!cacher) {
+            return;
+        }
+
+        const cacheKey = cacher.getCacheKey(
+            '$sidecar.auth.getStoredSecretKey',
+            { accessKey },
+            ctx.meta,
+            ['accessKey'],
+        );
+        await cacher.del(cacheKey);
     }
 
     @started

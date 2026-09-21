@@ -22,8 +22,10 @@
         "lint:fix": "biome lint --write .",
         "start": "tsx ./src/index.ts",
         "start:lab": "tsx ./src/index.ts --lab",
+        "start:ui": "tsx ./src/index.ts --ui",
         "start:dev": "tsx watch ./src/index.ts",
-        "test": "vp test"
+        "test": "vp test",
+        "ui:password": "tsx ./scripts/ui-password.ts"
     },
     "keywords": [],
     "author": "",
@@ -45,6 +47,7 @@
         "moleculer-db": "^0.8.28",
         "moleculer-db-adapter-sequelize": "^0.2.19",
         "moleculer-sidecar-next": "link:",
+        "moleculer-web": "^0.10.8",
         "nats": "^2.29.3",
         "sequelize": "^6.37.6",
         "sqlite3": "^5.1.7",

@@ -79,7 +79,7 @@ export class UnAuthorizedError extends Errors.MoleculerError {
      *
      * @memberOf UnAuthorizedError
      */
-    constructor(type: string, data: any) {
+    constructor(type: string, data?: unknown) {
         super('Unauthorized', 401, type || ERR_INVALID_TOKEN, data);
     }
 }

@@ -1,12 +1,7 @@
 import kleur from 'kleur';
 import _ from 'lodash';
 import { action, created, defineSettings, method, service, started, stopped } from 'moldecor';
-import {
-    type Context,
-    Errors,
-    Service as MoleculerService,
-    type ServiceSchema,
-} from 'moleculer';
+import { type Context, Errors, Service as MoleculerService, type ServiceSchema } from 'moleculer';
 import DbService from 'moleculer-db';
 import SequelizeDbAdapter from 'moleculer-db-adapter-sequelize';
 import Sequelize from 'sequelize';

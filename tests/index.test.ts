@@ -34,7 +34,7 @@ describe('parseCliArgs', () => {
             config: undefined,
             envfile: undefined,
             lab: false,
-            test: false,
+            ui: false,
             repl: false,
             help: false,
             version: false,
@@ -103,11 +103,11 @@ describe('resolveOptionalServices', () => {
     it('defaults to none and is driven by flags or environment', () => {
         expect(resolveOptionalServices(parseCliArgs([]), {})).toEqual([]);
         expect(resolveOptionalServices(parseCliArgs(['--lab']), {})).toEqual(['lab']);
-        expect(resolveOptionalServices(parseCliArgs([]), { LAB: 'true', TEST: '1' })).toEqual([
+        expect(resolveOptionalServices(parseCliArgs([]), { LAB: 'true', UI: '1' })).toEqual([
             'lab',
-            'test',
+            'ui',
         ]);
-        expect(resolveOptionalServices(parseCliArgs([]), { LAB: 'false', TEST: '0' })).toEqual([]);
+        expect(resolveOptionalServices(parseCliArgs([]), { LAB: 'false', UI: '0' })).toEqual([]);
     });
 });
 

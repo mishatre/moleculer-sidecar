@@ -20,14 +20,14 @@ const coreServices = [
 
 const optionalServices = {
     lab: async () => (await import('./services/lab.service.js')).default,
-    test: async () => (await import('./services/test.service.js')).default,
+    ui: async () => (await import('./services/ui.service.js')).default,
 } as const;
 
 const cliOptionsSchema = z.object({
     config: z.string().trim().min(1).optional(),
     envfile: z.string().trim().min(1).optional(),
     lab: z.boolean().default(false),
-    test: z.boolean().default(false),
+    ui: z.boolean().default(false),
     nodeId: z.string().trim().min(1).optional(),
     namespace: z.string().optional(),
     logLevel: z.string().trim().min(1).optional(),
@@ -55,7 +55,7 @@ export function parseCliArgs(argv: readonly string[]): CliOptions {
             config: { type: 'string', short: 'c' },
             envfile: { type: 'string', short: 'E' },
             lab: { type: 'boolean' },
-            test: { type: 'boolean' },
+            ui: { type: 'boolean' },
             'node-id': { type: 'string' },
             namespace: { type: 'string' },
             'log-level': { type: 'string' },
@@ -72,7 +72,7 @@ export function parseCliArgs(argv: readonly string[]): CliOptions {
         config: values.config,
         envfile: values.envfile,
         lab: values.lab,
-        test: values.test,
+        ui: values.ui,
         nodeId: values['node-id'],
         namespace: values.namespace,
         logLevel: values['log-level'],
@@ -219,7 +219,7 @@ Options:
                             [env: MOLECULER_CONFIG]
   -E, --envfile <file>      Env file to load [default: ./${DEFAULT_ENV_FILE} when present]
       --lab                 Start the lab monitoring agent [env: LAB]
-      --test                Start the test service [env: TEST]
+      --ui                  Start the access-token admin UI [env: UI]
       --node-id <id>        Broker nodeID
       --namespace <ns>      Broker namespace ("" clears it)
       --log-level <level>   Broker logLevel

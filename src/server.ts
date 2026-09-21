@@ -131,7 +131,7 @@ export function getServer(): HttpServer {
  */
 export class HttpServer {
     private readonly listener: http.Server | http2.Http2Server;
-    private readonly secure: boolean;
+    public readonly secure: boolean;
     private readonly mounts: Mount[] = [];
     private fallback: RequestHandler = ({ req, res }) =>
         this.sendError(req, res, new NotFoundError());
