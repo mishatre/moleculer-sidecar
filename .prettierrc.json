@@ -1,0 +1,13 @@
+{
+    "printWidth": 100,
+    "tabWidth": 4,
+    "singleQuote": true,
+    "bracketSameLine": true,
+    "trailingComma": "all",
+    "importAttributes": true,
+    
+    "importOrder": ["<THIRD_PARTY_MODULES>", "^[./]"],
+    "importOrderParserPlugins": ["typescript", "decorators", "importAssertions"],
+    "importOrderSeparation": true,
+    "importOrderSortSpecifiers": true
+}

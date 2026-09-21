@@ -1,0 +1,14 @@
+{
+    "servers": {
+        "serena": {
+            "type": "stdio",
+            "command": "/Users/mt/.local/bin/serena",
+            "args": ["start-mcp-server", "--context", "vscode", "--project-from-cwd"]
+        },
+        "graft": {
+            "type": "stdio",
+            "command": "/opt/homebrew/bin/graft",
+            "args": ["mcp", "${workspaceFolder}"]
+        }
+    }
+}

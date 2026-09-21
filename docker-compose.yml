@@ -1,0 +1,9 @@
+name: sidecar-next
+
+services:
+    sidecar-next:
+        image: ghcr.io/mishatre/sidecar-next
+        restart: unless-stopped
+        env_file: .env
+        environment:
+            - NODEID=sidecar-next
