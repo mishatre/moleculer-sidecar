@@ -1,6 +1,13 @@
 import { useState } from 'preact/hooks';
-import type { Token, TokenPair } from './api';
-import { createToken, NotAuthenticated, revokeToken } from './api';
+import {
+    createToken,
+    describeFailure,
+    NotAuthenticated,
+    revokeToken,
+    type Token,
+    type TokenPair,
+} from './api';
+import { Button, Card } from './ui';
 
 interface TokenListProps {
     tokens: Token[];
@@ -9,95 +16,212 @@ interface TokenListProps {
     onError: (message: string) => void;
 }
 
+type SecretField = 'accessKey' | 'secretKey';
+
+/**
+ * `navigator.clipboard` needs a secure context and the gateway is often plain
+ * http on the LAN, so fall back to the legacy selection copy.
+ */
+async function writeClipboard(value: string): Promise<boolean> {
+    try {
+        if (navigator.clipboard) {
+            await navigator.clipboard.writeText(value);
+            return true;
+        }
+    } catch {
+        // Fall through to the legacy path.
+    }
+
+    const area = document.createElement('textarea');
+    area.value = value;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.top = '-1000px';
+    document.body.append(area);
+    area.select();
+    const copied = document.execCommand('copy');
+    area.remove();
+    return copied;
+}
+
 export function TokenList({ tokens, onChanged, onLocked, onError }: TokenListProps) {
     const [created, setCreated] = useState<TokenPair | null>(null);
-    const [busy, setBusy] = useState(false);
+    const [creating, setCreating] = useState(false);
+    const [pending, setPending] = useState<string | null>(null);
+    const [confirming, setConfirming] = useState<string | null>(null);
+    const [copied, setCopied] = useState<SecretField | null>(null);
 
-    const run = async (action: () => Promise<void>) => {
-        setBusy(true);
+    const failed = (thrown: unknown) => {
+        if (thrown instanceof NotAuthenticated) {
+            onLocked();
+            return;
+        }
+        onError(describeFailure(thrown));
+    };
+
+    const handleCreate = async () => {
+        setCreating(true);
         try {
-            await action();
+            setCreated(await createToken());
+            setCopied(null);
+            onChanged();
         } catch (thrown) {
-            if (thrown instanceof NotAuthenticated) {
-                onLocked();
-                return;
-            }
-            onError(thrown instanceof Error ? thrown.message : String(thrown));
+            failed(thrown);
         } finally {
-            setBusy(false);
+            setCreating(false);
         }
     };
 
-    const handleCreate = () =>
-        run(async () => {
-            setCreated(await createToken());
-            onChanged();
-        });
-
-    const handleRevoke = (token: Token) =>
-        run(async () => {
-            await revokeToken(token.accessKey);
+    const handleRevoke = async (accessKey: string) => {
+        setPending(accessKey);
+        try {
+            await revokeToken(accessKey);
             setCreated(null);
+            setConfirming(null);
             onChanged();
-        });
+        } catch (thrown) {
+            failed(thrown);
+        } finally {
+            setPending(null);
+        }
+    };
+
+    const copy = async (field: SecretField, value: string) => {
+        if (await writeClipboard(value)) {
+            setCopied(field);
+            window.setTimeout(
+                () => setCopied((current) => (current === field ? null : current)),
+                1500,
+            );
+            return;
+        }
+        onError('Your browser blocked the copy — select the field and copy it manually.');
+    };
 
     return (
         <section>
-            <header class="row">
-                <h2>Access tokens</h2>
-                <button type="button" disabled={busy} onClick={handleCreate}>
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h2 class="flex items-center gap-2 text-base font-semibold">
+                    Access tokens
+                    {tokens.length > 0 ? (
+                        <span class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            {tokens.length}
+                        </span>
+                    ) : null}
+                </h2>
+                <Button busy={creating} onClick={() => void handleCreate()}>
                     Create token
-                </button>
-            </header>
+                </Button>
+            </div>
 
             {created ? (
-                <aside class="created">
-                    <p>
-                        <strong>Copy the secret now</strong> — it is shown once and cannot be
-                        retrieved later.
+                <Card tone="warn" role="status" class="mb-5 p-4 sm:p-5">
+                    <h3 class="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                        Copy the secret now — it is not shown again
+                    </h3>
+                    <p class="mt-1 text-sm text-amber-800 dark:text-amber-200/90">
+                        Store it where the client that signs through the gateway can read it.
                     </p>
-                    <label>
-                        Access key
-                        <input readOnly value={created.accessKey} />
-                    </label>
-                    <label>
-                        Secret key
-                        <input readOnly value={created.secretKey} />
-                    </label>
-                    <button type="button" onClick={() => setCreated(null)}>
-                        Done
-                    </button>
-                </aside>
+
+                    <dl class="mt-4 space-y-3">
+                        {(['accessKey', 'secretKey'] as const).map((field) => (
+                            <div key={field}>
+                                <dt class="text-xs font-medium tracking-wide text-amber-900/80 uppercase dark:text-amber-200/80">
+                                    {field === 'accessKey' ? 'Access key' : 'Secret key'}
+                                </dt>
+                                <dd class="mt-1 flex items-center gap-2">
+                                    <input
+                                        readOnly
+                                        value={created[field]}
+                                        onFocus={(event) => event.currentTarget.select()}
+                                        class="h-9 min-w-0 flex-1 rounded-md border border-amber-300 bg-white/80 px-2 font-mono text-xs text-slate-900 dark:border-amber-700 dark:bg-slate-950 dark:text-slate-100"
+                                    />
+                                    <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={() => void copy(field, created[field])}>
+                                        {copied === field ? 'Copied' : 'Copy'}
+                                    </Button>
+                                </dd>
+                            </div>
+                        ))}
+                    </dl>
+
+                    <div class="mt-4 flex justify-end">
+                        <Button size="sm" variant="ghost" onClick={() => setCreated(null)}>
+                            Done
+                        </Button>
+                    </div>
+                </Card>
             ) : null}
 
             {tokens.length === 0 ? (
-                <p class="muted">No access tokens yet.</p>
+                <Card class="border-dashed p-6 text-center sm:p-8">
+                    <p class="text-sm font-medium">No access tokens yet</p>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        Create one to give a client a signing credential.
+                    </p>
+                </Card>
             ) : (
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Access key</th>
-                            <th />
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {tokens.map((token) => (
-                            <tr key={token.accessKey}>
-                                <td>
-                                    <code>{token.accessKey}</code>
-                                </td>
-                                <td class="right">
-                                    <button
-                                        type="button"
-                                        disabled={busy}
-                                        onClick={() => handleRevoke(token)}>
-                                        Revoke
-                                    </button>
-                                </td>
+                <Card class="overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-50 text-xs tracking-wide text-slate-500 uppercase dark:bg-slate-950/50 dark:text-slate-400">
+                            <tr>
+                                <th scope="col" class="px-4 py-2.5 text-left font-medium">
+                                    Access key
+                                </th>
+                                <th scope="col" class="px-4 py-2.5 text-right font-medium">
+                                    Actions
+                                </th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                            {tokens.map((token) => (
+                                <tr
+                                    key={token.accessKey}
+                                    class="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                                    <td class="px-4 py-2.5">
+                                        <code class="font-mono text-xs break-all">
+                                            {token.accessKey}
+                                        </code>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-right whitespace-nowrap">
+                                        {confirming === token.accessKey ? (
+                                            <span class="inline-flex items-center gap-2">
+                                                <span class="text-xs text-slate-500 dark:text-slate-400">
+                                                    Revoke this token?
+                                                </span>
+                                                <Button
+                                                    size="sm"
+                                                    variant="danger"
+                                                    busy={pending === token.accessKey}
+                                                    onClick={() =>
+                                                        void handleRevoke(token.accessKey)
+                                                    }>
+                                                    Revoke
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => setConfirming(null)}>
+                                                    Cancel
+                                                </Button>
+                                            </span>
+                                        ) : (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                disabled={pending !== null}
+                                                onClick={() => setConfirming(token.accessKey)}>
+                                                Revoke
+                                            </Button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </Card>
             )}
         </section>
     );

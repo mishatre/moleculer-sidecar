@@ -7,17 +7,63 @@ export interface TokenPair {
     secretKey: string;
 }
 
+/** API error codes worth spelling out; anything else is shown verbatim. */
+const MESSAGES: Record<string, string> = {
+    INVALID_PASSWORD: 'Wrong password.',
+    NO_SESSION: 'Your session expired — please sign in again.',
+    CSRF_MISMATCH: 'Your session expired — please sign in again.',
+    ACCESS_KEY_NOT_FOUND: 'That access key no longer exists.',
+    FORBIDDEN: 'This page is only reachable from the server itself.',
+    UNKNOWN_UI_API_ROUTE: 'That API route does not exist.',
+};
+
+function describeCode(code: string): string {
+    return MESSAGES[code] ?? code;
+}
+
 /** Thrown when the API refuses the request because the session is gone. */
 export class NotAuthenticated extends Error {
-    constructor() {
-        super('not authenticated');
+    /** The API error code, e.g. `NO_SESSION`, `CSRF_MISMATCH`, `INVALID_PASSWORD`. */
+    public readonly code: string;
+
+    constructor(code = 'NO_SESSION') {
+        super(describeCode(code));
+        this.name = 'NotAuthenticated';
+        this.code = code;
     }
+}
+
+/** Thrown for any other failed request, carrying a message fit for a human. */
+export class ApiError extends Error {
+    public readonly status: number;
+
+    constructor(status: number, message: string) {
+        super(message);
+        this.name = 'ApiError';
+        this.status = status;
+    }
+}
+
+/** Readable text for anything thrown by this module. */
+export function describeFailure(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
 }
 
 const API_BASE = '/ui/api';
 const CSRF_HEADER = 'x-ui-csrf';
 
 let csrfToken = '';
+
+/** The gateway answers errors as `{ name, message, code, type }`; `message` is the code. */
+async function errorCode(response: Response): Promise<string> {
+    try {
+        const body = (await response.json()) as { message?: unknown };
+        return typeof body.message === 'string' ? body.message : '';
+    } catch {
+        // Not JSON (a proxy, or a plain-text 500) — fall back to the status line.
+        return '';
+    }
+}
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const method = options.method ?? 'GET';
@@ -43,12 +89,18 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
         csrfToken = fresh;
     }
 
-    if (response.status === 401) {
-        csrfToken = '';
-        throw new NotAuthenticated();
-    }
     if (!response.ok) {
-        throw new Error(`${response.status} ${response.statusText}`);
+        const code = await errorCode(response);
+        // A stale CSRF token means the session went away underneath us: lock the
+        // UI instead of surfacing a 403 the user can do nothing about.
+        if (response.status === 401 || code === 'CSRF_MISMATCH') {
+            csrfToken = '';
+            throw new NotAuthenticated(code || 'NO_SESSION');
+        }
+        throw new ApiError(
+            response.status,
+            code ? describeCode(code) : `${response.status} ${response.statusText}`,
+        );
     }
 
     return (await response.json()) as T;
