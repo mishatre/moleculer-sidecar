@@ -1,6 +1,7 @@
 {
-    // Biome is the single formatter/linter for this workspace; keep Prettier and
-    // ESLint off so the two toolchains don't fight over the same files.
+    // Biome is the single formatter/linter for this workspace. Prettier and
+    // ESLint were removed from the project; their editor extensions are kept
+    // quiet here so a second toolchain can't reformat or re-lint these files.
     "editor.defaultFormatter": "biomejs.biome",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {

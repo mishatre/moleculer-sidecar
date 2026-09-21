@@ -1,7 +1,0 @@
-{
-    "plugins": ["prettier"],
-    "extends": ["universe/node"],
-    "rules": {
-        "import/order": "off"
-    }
-}
