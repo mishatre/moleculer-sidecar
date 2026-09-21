@@ -1,7 +1,7 @@
-import { ActionSchema, Context, Endpoint } from 'moleculer';
+import type http from 'node:http';
 
-import { Http2ServerRequest, Http2ServerResponse } from 'node:http2';
-import http from 'node:http';
+import type { Http2ServerRequest, Http2ServerResponse } from 'node:http2';
+import type { ActionSchema, Context, Endpoint } from 'moleculer';
 
 type IncomingRequestExt = {
     $startTime?: [number, number];

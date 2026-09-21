@@ -1,4 +1,4 @@
-// @ts-ignore
+// @ts-expect-error
 import LabAgent from '@moleculer/lab';
 import { service } from 'moldecor';
 import { Service as MoleculerService } from 'moleculer';

@@ -1,27 +1,35 @@
+import http from 'node:http';
+import http2, { type Http2ServerRequest, type Http2ServerResponse } from 'node:http2';
+import https from 'node:https';
+import type { AddressInfo } from 'node:net';
+import os from 'node:os';
+import { join } from 'node:path/posix';
+import type Stream from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
+import { Busboy } from '@fastify/busboy';
+import bodyParser, { type BodyParser } from 'body-parser';
+import FormData from 'form-data';
+import { isStream } from 'is-stream';
+import kleur from 'kleur';
+import _ from 'lodash';
 import { action, created, method, service, started, stopped } from 'moldecor';
 import {
-    ActionSchema,
-    CallingOptions,
-    Context,
-    Endpoint,
+    type ActionSchema,
+    type CallingOptions,
+    type Context,
+    type Endpoint,
     Errors,
-    Logger,
+    type Logger,
     Service as MoleculerService,
-    ServiceSchema,
+    type ServiceSchema,
 } from 'moleculer';
-import { parseStringPromise } from 'xml2js';
-import http from 'node:http';
-import http2, { Http2ServerRequest, Http2ServerResponse } from 'node:http2';
-import https from 'node:https';
-import { AddressInfo } from 'node:net';
-import os from 'node:os';
-import bodyParser, { BodyParser } from 'body-parser';
+import DbService from 'moleculer-db';
+import SqlAdapter from 'moleculer-db-adapter-sequelize';
+import Sequelize from 'sequelize';
 import typeis, { is } from 'type-is';
-import _ from 'lodash';
-import kleur from 'kleur';
+import { parseStringPromise } from 'xml2js';
+import { parse, stringify } from 'yaml';
 import { parseReqSigV4, validateMessage } from './aws-signature.js';
-import Stream, { PassThrough, Readable } from 'node:stream';
-import { isStream } from 'is-stream';
 import {
     convertToMoleculerError,
     ERR_INVALID_TOKEN,
@@ -34,13 +42,6 @@ import {
     UnAuthorizedError,
     UnsupportedMediaType,
 } from './errors.js';
-import { Busboy } from '@fastify/busboy';
-import FormData from 'form-data';
-import { join } from 'node:path/posix';
-import { parse, stringify } from 'yaml';
-import Sequelize from 'sequelize';
-import DbService from 'moleculer-db';
-import SqlAdapter from 'moleculer-db-adapter-sequelize';
 
 type IncomingRequestExt = {
     $startTime?: [number, number];
@@ -414,10 +415,10 @@ function buildUrl(connection: ConnectionInfo) {
 })
 export default class SidecarService extends MoleculerService<Settings> {
     private adapter!: SqlAdapter & { db: Sequelize.Sequelize };
-    private declare server: http.Server | http2.Http2Server;
-    private declare isHTTPS;
+    declare private server: http.Server | http2.Http2Server;
+    declare private isHTTPS;
 
-    private declare jsonParser: ReturnType<BodyParser['json']>;
+    declare private jsonParser: ReturnType<BodyParser['json']>;
 
     @action({
         name: 'parseYAML',
@@ -523,7 +524,7 @@ export default class SidecarService extends MoleculerService<Settings> {
                 if (typeof action === 'boolean' || typeof action === 'function') {
                     continue;
                 }
-                let newAction = _.cloneDeep(action);
+                const newAction = _.cloneDeep(action);
                 newAction.handler = (ctx: Context) => {
                     ctx.locals = {
                         handler: action.handler,
@@ -540,7 +541,7 @@ export default class SidecarService extends MoleculerService<Settings> {
                 if (typeof event === 'function') {
                     continue;
                 }
-                let newEvent = _.cloneDeep(event);
+                const newEvent = _.cloneDeep(event);
                 newEvent.handler = (ctx: Context) => {
                     ctx.locals = {
                         handler: event.handler,
@@ -776,7 +777,7 @@ export default class SidecarService extends MoleculerService<Settings> {
                     context.action = endpoint;
 
                     // Call the action
-                    let data = await ctx.call(req.$endpoint as unknown as string, req.$params!, {
+                    const data = await ctx.call(req.$endpoint as unknown as string, req.$params!, {
                         ...context.options,
                         stream: context.stream as any,
                         ctx: context,
@@ -841,7 +842,7 @@ export default class SidecarService extends MoleculerService<Settings> {
 
     @method
     private contextToPayload(ctx: Context) {
-        if (!!ctx.action) {
+        if (ctx.action) {
             return {
                 id: ctx.id,
                 action: ctx.action?.name,
@@ -856,7 +857,7 @@ export default class SidecarService extends MoleculerService<Settings> {
                 caller: ctx.caller,
                 handler: ctx.locals.handler,
             };
-        } else if (!!ctx.event) {
+        } else if (ctx.event) {
             return {
                 id: ctx.id,
                 event: ctx.eventName,
@@ -979,7 +980,7 @@ export default class SidecarService extends MoleculerService<Settings> {
         res.locals = res.locals || {};
         req.originalUrl = req.url;
 
-        let parsed = parseRequestURL(req);
+        const parsed = parseRequestURL(req);
         let url = parsed.url;
 
         // Trim trailing slash
@@ -1003,7 +1004,7 @@ export default class SidecarService extends MoleculerService<Settings> {
             return this.send404(req, res);
         }
 
-        let options: CallingOptions = {};
+        const options: CallingOptions = {};
         try {
             await this.actions.rest({ req, res }, options);
         } catch (error: unknown) {
@@ -1159,7 +1160,7 @@ export default class SidecarService extends MoleculerService<Settings> {
 
     @method
     protected async authorize(ctx: Context, req: IncomingMessage): Promise<Context> {
-        let auth = req.headers['authorization'];
+        const auth = req.headers['authorization'];
         if (!auth) {
             // No token
             return Promise.reject(new UnAuthorizedError(ERR_NO_TOKEN, null));

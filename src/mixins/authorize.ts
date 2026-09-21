@@ -1,7 +1,7 @@
 import { method, service } from 'moldecor';
-import { Context, Service as MoleculerService } from 'moleculer';
-import { IncomingMessage } from '../types.js';
+import { type Context, Service as MoleculerService } from 'moleculer';
 import { ERR_INVALID_TOKEN, ERR_NO_TOKEN, UnAuthorizedError } from '../errors.js';
+import type { IncomingMessage } from '../types.js';
 
 @service({
     name: 'authorize-mixin',
@@ -17,7 +17,7 @@ import { ERR_INVALID_TOKEN, ERR_NO_TOKEN, UnAuthorizedError } from '../errors.js
 export default class AuthorizeMixin extends MoleculerService {
     @method
     protected async authorize(ctx: Context, req: IncomingMessage): Promise<Context> {
-        let auth = req.headers['authorization'];
+        const auth = req.headers['authorization'];
         if (!auth) {
             // No token
             return Promise.reject(new UnAuthorizedError(ERR_NO_TOKEN, null));

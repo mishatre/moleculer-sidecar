@@ -1,14 +1,14 @@
+import { randomBytes } from 'node:crypto';
+import kleur from 'kleur';
 import { action, method, service, started } from 'moldecor';
-import { Context, Errors, Service as MoleculerService } from 'moleculer';
-import { IncomingMessage } from '../types.js';
-import { parseReqSigV4, validateMessage } from '../utils/aws-signature.js';
+import { type Context, Errors, Service as MoleculerService } from 'moleculer';
 import DbService from 'moleculer-db';
 import SequelizeDbAdapter from 'moleculer-db-adapter-sequelize';
 import Sequelize from 'sequelize';
-import { randomBytes } from 'node:crypto';
-import kleur from 'kleur';
+import type { IncomingMessage } from '../types.js';
+import { parseReqSigV4, validateMessage } from '../utils/aws-signature.js';
 
-interface Settings {}
+type Settings = {};
 
 export interface VerifyRequestParams {
     req: IncomingMessage & { originalUrl: string; method: string };

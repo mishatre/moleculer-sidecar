@@ -1,5 +1,5 @@
 import { join } from 'node:path/posix';
-import { ConnectionInfo } from '../types.js';
+import type { ConnectionInfo } from '../types.js';
 
 export function parseRequestURL(req: { url?: string }) {
     const url = new URL(req.url!, 'https://example.com');

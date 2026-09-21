@@ -1,8 +1,9 @@
+import type { IncomingHttpHeaders } from 'node:http';
+import type Stream from 'node:stream';
+import { PassThrough, Readable, type Transform } from 'node:stream';
 import { Busboy } from '@fastify/busboy';
-import { Context, ServiceBroker } from 'moleculer';
-import { IncomingHttpHeaders } from 'node:http';
-import Stream, { PassThrough, Readable, Transform } from 'node:stream';
 import FormData from 'form-data';
+import type { Context, ServiceBroker } from 'moleculer';
 
 interface IBucket<T> extends AsyncGenerator<T, never, unknown> {
     push(v: T): void;
@@ -173,7 +174,7 @@ export default class Packet {
 
     public static fromContext(ctx: Context) {
         let data: Payload;
-        if (!!ctx.action) {
+        if (ctx.action) {
             data = {
                 id: ctx.id,
                 action: ctx.action?.name!,
@@ -189,7 +190,7 @@ export default class Packet {
                 sender: ctx.nodeID,
                 handler: ctx.locals.handler,
             };
-        } else if (!!ctx.event) {
+        } else if (ctx.event) {
             data = {
                 id: ctx.id,
                 event: ctx.eventName!,

@@ -1,12 +1,12 @@
-import crypto, { BinaryLike, KeyObject } from 'crypto';
-import querystring, { ParsedUrlQuery } from 'node:querystring';
-import { IncomingMessage } from '../types.js';
+import querystring, { type ParsedUrlQuery } from 'node:querystring';
+import crypto, { type BinaryLike, type KeyObject } from 'crypto';
+import type { IncomingMessage } from '../types.js';
 
 enum Headers {
-    'Authorization' = 'authorization',
-    'XAmzDate' = 'x-amz-date',
-    'XAmzContentSha256' = 'x-amz-content-sha256',
-    'XAmzExpires' = 'x-amz-expires',
+    Authorization = 'authorization',
+    XAmzDate = 'x-amz-date',
+    XAmzContentSha256 = 'x-amz-content-sha256',
+    XAmzExpires = 'x-amz-expires',
 }
 
 type PartialRequest = Pick<IncomingMessage, 'originalUrl' | 'method' | 'headers'>;

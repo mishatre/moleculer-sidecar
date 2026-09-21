@@ -1,6 +1,7 @@
 import { action, event, service, started } from 'moldecor';
-import { Context, Service as MoleculerService } from 'moleculer';
-interface Settings {}
+import { type Context, Service as MoleculerService } from 'moleculer';
+
+type Settings = {};
 
 @service({
     name: 'sidecar.prod.test',

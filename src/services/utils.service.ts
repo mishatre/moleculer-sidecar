@@ -1,7 +1,8 @@
 import { action, service, started } from 'moldecor';
-import { Context, Service as MoleculerService } from 'moleculer';
+import { type Context, Service as MoleculerService } from 'moleculer';
 import { parse } from 'yaml';
-interface Settings {}
+
+type Settings = {};
 
 @service({
     name: '$sidecar.utils',
