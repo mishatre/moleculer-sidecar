@@ -1,0 +1,15 @@
+allowBuilds:
+  cbor-extract: true
+  esbuild: true
+  sqlite3: true
+minimumReleaseAgeExclude:
+  - moldecor@2.0.0-rc.3
+overrides:
+  # Keep every `vite` specifier in the graph on the Vite+ core alias so Vitest
+  # and the rest of the toolchain share one Vite instance.
+  vite@*: "npm:@voidzero-dev/vite-plus-core@0.3.3"
+peerDependencyRules:
+  allowAny:
+    - vite
+  allowedVersions:
+    vite: "*"
