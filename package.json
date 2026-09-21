@@ -20,9 +20,9 @@
         "format:check": "biome format .",
         "lint": "biome lint .",
         "lint:fix": "biome lint --write .",
-        "start": "tsx ./node_modules/moleculer/bin/moleculer-runner.mjs --config ./moleculer.config.ts -e --hot ./src/services/*.service.ts",
-        "start:lab": "tsx ./node_modules/moleculer/bin/moleculer-runner.mjs --config ./moleculer.config.ts -e --hot ./src/services/lab.service.ts",
-        "start:dev": "tsx ./node_modules/moleculer/bin/moleculer-runner.mjs --config ./moleculer.config.ts -e --hot",
+        "start": "tsx ./src/index.ts",
+        "start:lab": "tsx ./src/index.ts --lab",
+        "start:dev": "tsx watch ./src/index.ts",
         "test": "vp test"
     },
     "keywords": [],
@@ -31,7 +31,7 @@
     "packageManager": "pnpm@12.5.1",
     "dependencies": {
         "@fastify/busboy": "^3.1.1",
-        "@moleculer/lab": "^0.6.4",
+        "@moleculer/lab": "^1.0.0",
         "body-parser": "^1.20.3",
         "cbor-extract": "^2.2.0",
         "cbor-x": "^1.6.0",
@@ -50,7 +50,8 @@
         "sqlite3": "^5.1.7",
         "type-is": "^1.6.18",
         "xml2js": "^0.6.2",
-        "yaml": "^2.7.0"
+        "yaml": "^2.7.0",
+        "zod": "^4.6.5"
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.14",

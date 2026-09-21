@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { buildUrl, parseRequestURL } from './utils.js';
+import { buildUrl, parseRequestURL } from '../src/utils/utils.js';
 
 describe('parseRequestURL', () => {
     it('returns the path and query parameters', () => {

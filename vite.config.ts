@@ -29,6 +29,6 @@ export default defineConfig({
         options: { typeAware: true, typeCheck: true },
     },
     test: {
-        include: ['src/**/*.test.ts'],
+        include: ['tests/**/*.test.ts'],
     },
 });

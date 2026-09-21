@@ -1,4 +1,3 @@
-// @ts-expect-error
 import LabAgent from '@moleculer/lab';
 import { defineSettings, service } from 'moldecor';
 import { Service as MoleculerService } from 'moleculer';

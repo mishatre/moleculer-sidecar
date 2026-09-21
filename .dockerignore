@@ -7,6 +7,8 @@
 .gitmodules
 .idea
 .data
+.env
+.env.*
 tests
 README.md
 Dockerfile
