@@ -11,15 +11,18 @@
     "main": "index.js",
     "files": [
         "dist",
-        "src"
+        "src",
+        "ui/dist"
     ],
     "scripts": {
+        "build:ui": "pnpm --dir ui run build",
         "check": "biome check .",
         "check:fix": "biome check --write .",
         "format": "biome format --write .",
         "format:check": "biome format .",
         "lint": "biome lint .",
         "lint:fix": "biome lint --write .",
+        "prepack": "pnpm run build:ui",
         "start": "tsx ./src/index.ts",
         "start:lab": "tsx ./src/index.ts --lab",
         "start:ui": "tsx ./src/index.ts --ui",

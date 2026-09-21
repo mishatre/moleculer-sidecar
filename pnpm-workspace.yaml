@@ -8,6 +8,8 @@ overrides:
   # Keep every `vite` specifier in the graph on the Vite+ core alias so Vitest
   # and the rest of the toolchain share one Vite instance.
   vite@*: "npm:@voidzero-dev/vite-plus-core@0.3.3"
+packages:
+  - ui
 peerDependencyRules:
   allowAny:
     - vite

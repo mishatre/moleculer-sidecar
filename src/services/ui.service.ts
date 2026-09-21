@@ -188,6 +188,14 @@ export default class UiService extends MoleculerService<typeof settings> {
     private handleRequest({ req, res, path }: ServerRequest) {
         assertUiAccess(req, res, this.settings.auth, path);
 
+        // moleculer-web rebuilds `req.url` from `req.originalUrl` while routing
+        // (its `settings.path` is '/', so no prefix is re-added) and then hands
+        // `req.url` to serve-static. Ours still carries the `/ui` mount that the
+        // dispatcher stripped, which made serve-static look for
+        // `<dist>/ui/assets/*` and miss every bundle file. Inside the mount the
+        // mount-relative url *is* the original one.
+        req.originalUrl = req.url;
+
         this.express()(req, res, (error?: unknown) => {
             if (error) {
                 return this.server.sendError(req, res, error);

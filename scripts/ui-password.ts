@@ -1,9 +1,11 @@
 import { hashPassword } from '../src/ui/auth.js';
 
+console.log(1);
 const chunks: Buffer[] = [];
-for await (const chunk of process.stdin) {
-    chunks.push(chunk as Buffer);
-}
+chunks.push(Buffer.from('dic@25099') as Buffer);
+// for await (const chunk of process.stdin) {
+//     chunks.push(chunk as Buffer);
+// }
 
 const password = Buffer.concat(chunks)
     .toString('utf8')

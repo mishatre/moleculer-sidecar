@@ -16,4 +16,6 @@ COPY . .
 
 RUN pnpm install --frozen-lockfile
 
+RUN pnpm run build:ui
+
 CMD [ "pnpm", "run", "start" ]
