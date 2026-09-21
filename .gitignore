@@ -187,3 +187,11 @@ docs/example/
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 graft/
+
+# Agent customization is versioned. This block MUST stay last: git applies the last
+# matching rule, so a negation placed above `*.md` / `*.sh` / `*.txt` / `*.csv` would
+# lose to them. Negating the whole tree (not just *.md) means a future helper file
+# cannot vanish from git — and because Biome honours this file, it would lose its
+# linting too.
+!.github/**
+!AGENTS.md

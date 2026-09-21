@@ -1,0 +1,18 @@
+{
+    "hooks": {
+        "PostToolUse": [
+            {
+                "type": "command",
+                "command": "node .github/hooks/scripts/post-tool-use.mjs",
+                "timeout": 30
+            }
+        ],
+        "Stop": [
+            {
+                "type": "command",
+                "command": "node .github/hooks/scripts/stop.mjs",
+                "timeout": 45
+            }
+        ]
+    }
+}
