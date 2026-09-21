@@ -86,11 +86,26 @@ export interface ServerRequest {
 
 export type RequestHandler = (request: ServerRequest) => void | Promise<void>;
 
+/**
+ * - `exact`: only the prefix itself matches; the request URL is left alone.
+ * - `prefix`: the prefix and everything under it match; the prefix is stripped
+ *   from `req.url` (`req.baseUrl` gets it) so the handler sees the remainder.
+ */
 export type MountMode = 'exact' | 'prefix';
+
+export interface MountOptions {
+    mode?: MountMode;
+    /**
+     * Answer the bare prefix with a redirect to `prefix/`, so relative URLs in a
+     * document served from there resolve under the mount.
+     */
+    slashRedirect?: boolean;
+}
 
 interface Mount {
     prefix: string;
     mode: MountMode;
+    slashRedirect: boolean;
     handler: RequestHandler;
 }
 
@@ -162,8 +177,18 @@ export class HttpServer {
     /**
      * Mount a handler. Returns the function that removes the mount again.
      */
-    public mount(prefix: string, handler: RequestHandler, mode: MountMode = 'prefix'): () => void {
-        const mount: Mount = { prefix: normalizePrefix(prefix), mode, handler };
+    public mount(
+        prefix: string,
+        handler: RequestHandler,
+        options: MountMode | MountOptions = {},
+    ): () => void {
+        const { mode, slashRedirect } = typeof options === 'string' ? { mode: options } : options;
+        const mount: Mount = {
+            prefix: normalizePrefix(prefix),
+            mode: mode ?? 'prefix',
+            slashRedirect: slashRedirect ?? false,
+            handler,
+        };
 
         if (this.mounts.some((item) => item.prefix === mount.prefix && item.mode === mount.mode)) {
             throw new Error(`mount already registered: ${mount.prefix}`);
@@ -293,10 +318,11 @@ export class HttpServer {
         req.originalUrl = req.url;
 
         const parsed = parseRequestURL(req);
+        const hasTrailingSlash = parsed.url.length > 1 && parsed.url.endsWith('/');
         let url = parsed.url;
 
         // Trim trailing slash
-        if (url.length > 1 && url.endsWith('/')) {
+        if (hasTrailingSlash) {
             url = url.slice(0, -1);
         }
 
@@ -316,13 +342,19 @@ export class HttpServer {
             return;
         }
 
+        const search = req.url?.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+
+        if (mount.slashRedirect && url === mount.prefix && !hasTrailingSlash) {
+            res.writeHead(307, { location: `${mount.prefix}/${search}` });
+            res.end();
+            return;
+        }
+
         if (mount.mode === 'prefix') {
             const rest = url.slice(mount.prefix.length);
             request.path = rest === '' ? '/' : rest;
             req.baseUrl = mount.prefix;
-
-            const query = req.url?.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
-            req.url = `${request.path}${query}`;
+            req.url = `${request.path}${search}`;
         }
 
         await this.run(mount.handler, request);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { buildUrl, parseRequestURL } from '../src/utils/utils.js';
+import { buildUrl, isLoopback, parseRequestURL } from '../src/utils/utils.js';
 
 describe('parseRequestURL', () => {
     it('returns the path and query parameters', () => {
@@ -8,6 +8,30 @@ describe('parseRequestURL', () => {
             url: '/lab/api/projects',
             query: { limit: '10', tag: 'sidecar' },
         });
+    });
+});
+
+describe('isLoopback', () => {
+    it('accepts the loopback ranges', () => {
+        expect(['127.0.0.1', '127.0.0.2', '::1', '::ffff:127.0.0.1'].map(isLoopback)).toEqual([
+            true,
+            true,
+            true,
+            true,
+        ]);
+    });
+
+    it('rejects everything else', () => {
+        const addresses = ['192.168.1.10', '::ffff:192.168.1.10', '10.0.0.1', '1270.1.2.3'];
+
+        expect([...addresses.map(isLoopback), isLoopback(undefined), isLoopback()]).toEqual([
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+        ]);
     });
 });
 

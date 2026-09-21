@@ -9,6 +9,14 @@ export function parseRequestURL(req: { url?: string }) {
     };
 }
 
+export function isLoopback(address?: string): boolean {
+    if (!address) return false;
+    if (address === '::1') return true;
+
+    const ipv4 = address.startsWith('::ffff:') ? address.slice('::ffff:'.length) : address;
+    return ipv4.startsWith('127.');
+}
+
 export function buildUrl(connection: ConnectionInfo) {
     const url = new URL('https://example.org');
     url.protocol = connection.useSSL ? 'https' : 'http';

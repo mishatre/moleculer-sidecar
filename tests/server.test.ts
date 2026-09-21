@@ -132,6 +132,33 @@ describe('HttpServer mounts', () => {
     });
 });
 
+describe('HttpServer slash redirect', () => {
+    it('redirects the bare prefix, keeping the query string', async () => {
+        const hits: Hit[] = [];
+        const { server, url } = await start();
+        server.mount('/lab', recorder(hits), { slashRedirect: true });
+
+        const redirect = await fetch(`${url}/lab?tab=registry`, { redirect: 'manual' });
+        expect(redirect.status).toBe(307);
+        expect(redirect.headers.get('location')).toBe('/lab/?tab=registry');
+
+        await fetch(`${url}/lab/`);
+        expect(hits[0]).toMatchObject({ path: '/', url: '/lab', reqUrl: '/' });
+
+        await fetch(`${url}/lab/api/project`);
+        expect(hits[1]).toMatchObject({ path: '/api/project', reqUrl: '/api/project' });
+    });
+
+    it('leaves mounts that did not opt in alone', async () => {
+        const hits: Hit[] = [];
+        const { server, url } = await start();
+        server.mount('/lab', recorder(hits));
+
+        expect((await fetch(`${url}/lab`)).status).toBe(200);
+        expect(hits[0]).toMatchObject({ path: '/', url: '/lab', reqUrl: '/' });
+    });
+});
+
 describe('HttpServer responses', () => {
     it('answers unmounted paths with a JSON 404', async () => {
         const { url } = await start();

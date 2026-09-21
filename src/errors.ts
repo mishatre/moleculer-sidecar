@@ -85,6 +85,26 @@ export class UnAuthorizedError extends Errors.MoleculerError {
 }
 
 /**
+ * Forbidden HTTP error
+ *
+ * @class ForbiddenError
+ * @extends {Error}
+ */
+export class ForbiddenError extends Errors.MoleculerError {
+    /**
+     * Creates an instance of ForbiddenError.
+     *
+     * @param {String} type
+     * @param {any} data
+     *
+     * @memberOf ForbiddenError
+     */
+    constructor(type?: string, data?: unknown) {
+        super('Forbidden', 403, type || 'FORBIDDEN', data);
+    }
+}
+
+/**
  * Service unavailable HTTP error
  *
  * @class ForbiddenError
