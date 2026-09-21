@@ -21,5 +21,11 @@
         "editor.defaultFormatter": "biomejs.biome"
     },
     "eslint.enable": false,
-    "prettier.enable": false
+    "prettier.enable": false,
+
+    // Hooks run shell commands, so an agent that can rewrite them can rewrite its
+    // own guardrails. Edits under .github/hooks/** require manual approval.
+    "chat.tools.edits.autoApprove": {
+        "**/.github/hooks/**": false
+    }
 }

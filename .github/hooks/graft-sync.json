@@ -1,0 +1,18 @@
+{
+    "hooks": {
+        "PostToolUse": [
+            {
+                "type": "command",
+                "command": "node .github/hooks/scripts/graft-sync.mjs",
+                "timeout": 30
+            }
+        ],
+        "Stop": [
+            {
+                "type": "command",
+                "command": "node .github/hooks/scripts/graft-stop.mjs",
+                "timeout": 20
+            }
+        ]
+    }
+}
