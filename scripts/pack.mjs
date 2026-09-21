@@ -34,7 +34,7 @@ const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const repoManifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
 
 /** Kept out of the staged install; see the header comment. */
-const EXCLUDED_DEPENDENCIES = new Set(['moleculer-sidecar-next', 'cbor-extract']);
+const EXCLUDED_DEPENDENCIES = new Set(['moleculer-sidecar', 'cbor-extract']);
 
 const TARGETS = {
     'linux-x64': {

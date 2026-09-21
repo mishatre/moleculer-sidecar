@@ -1,9 +1,9 @@
-name: sidecar-next
+name: moleculer-sidecar
 
 services:
-    sidecar-next:
-        image: ghcr.io/mishatre/sidecar-next
+    moleculer-sidecar:
+        image: ghcr.io/mishatre/moleculer-sidecar
         restart: unless-stopped
         env_file: .env
         environment:
-            - NODEID=sidecar-next
+            - NODEID=moleculer-sidecar

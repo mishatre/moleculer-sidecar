@@ -4,8 +4,8 @@ The packaged artifact is a single executable per target:
 
 | Target    | Artifact                                  | Built from |
 | --------- | ----------------------------------------- | ---------- |
-| linux-x64 | `dist/bin/moleculer-sidecar-next-linux-x64` | any host |
-| win-x64   | `dist/bin/moleculer-sidecar-next-win-x64.exe` | any host |
+| linux-x64 | `dist/bin/moleculer-sidecar-linux-x64`      | any host |
+| win-x64   | `dist/bin/moleculer-sidecar-win-x64.exe`    | any host |
 
 No Node, no `node_modules`, no sidecar files: copy the file and run it.
 
@@ -155,7 +155,7 @@ URL('./postgres.data', import.meta.url))`. With the URL shim in place that works
 from inside the binary — no external database and no `LAB_PG_URL`:
 
 ```
-$ moleculer-sidecar-next-linux-x64 --lab
+$ moleculer-sidecar-linux-x64 --lab
 … Laboratory store initialized (backend: pglite)
 … Server listening on http://0.0.0.0:5103
 
@@ -198,6 +198,6 @@ need the binary copied in.
 Cross-check the artifact itself:
 
 ```
-file dist/bin/moleculer-sidecar-next-win-x64.exe      # PE32+ executable (console) x86-64
-ldd  dist/bin/moleculer-sidecar-next-linux-x64        # no node dependency
+file dist/bin/moleculer-sidecar-win-x64.exe      # PE32+ executable (console) x86-64
+ldd  dist/bin/moleculer-sidecar-linux-x64        # no node dependency
 ```

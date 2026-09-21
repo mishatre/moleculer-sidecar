@@ -12,7 +12,7 @@
 
 .EXAMPLE
     # minimal install (writes state to %ProgramData%\moleculer-sidecar)
-    .\install-service.ps1 -BinaryPath C:\srv\sidecar\moleculer-sidecar-next-win-x64.exe
+    .\install-service.ps1 -BinaryPath C:\srv\sidecar\moleculer-sidecar-win-x64.exe
 
 .EXAMPLE
     # with a NATS bus and the lab agent on an external PostgreSQL

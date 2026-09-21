@@ -211,7 +211,7 @@ importers:
       moleculer-db-adapter-sequelize:
         specifier: ^0.2.19
         version: 0.2.19(moleculer@0.14.35(cbor-x@1.6.0)(debug@4.4.0(supports-color@5.5.0))(encoding@0.1.13)(nats@2.29.3))(sequelize@6.37.6(pg@8.23.0)(sqlite3@5.1.7(bluebird@3.7.2)(supports-color@5.5.0))(supports-color@5.5.0))
-      moleculer-sidecar-next:
+      moleculer-sidecar:
         specifier: 'link:'
         version: 'link:'
       moleculer-web:
