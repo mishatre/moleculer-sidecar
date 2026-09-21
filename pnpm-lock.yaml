@@ -40,7 +40,7 @@ importers:
         version: 4.17.21
       moldecor:
         specifier: github:mishatre/moldecor#heads/next
-        version: https://codeload.github.com/mishatre/moldecor/tar.gz/4631ac580a8591fa94e56aec4870d6b67805926b(moleculer@0.14.35(cbor-x@1.6.0)(debug@4.4.0)(encoding@0.1.13)(nats@2.29.3))
+        version: https://codeload.github.com/mishatre/moldecor/tar.gz/7d35cdc90b7eb42c1cae3e85e462a7c5a65dda05(moleculer@0.14.35(cbor-x@1.6.0)(debug@4.4.0)(encoding@0.1.13)(nats@2.29.3))
       moleculer:
         specifier: 0.14.35
         version: 0.14.35(cbor-x@1.6.0)(debug@4.4.0)(encoding@0.1.13)(nats@2.29.3)
@@ -72,6 +72,9 @@ importers:
         specifier: ^2.7.0
         version: 2.7.0
     devDependencies:
+      '@biomejs/biome':
+        specifier: 2.5.14
+        version: 2.5.14
       '@types/body-parser':
         specifier: ^1.19.5
         version: 1.19.5
@@ -98,6 +101,59 @@ importers:
         version: 5.8.2
 
 packages:
+
+  '@biomejs/biome@2.5.14':
+    resolution: {integrity: sha512-0FabLIjd4M/dm8VFI86RMaLLdgepzbdfiAL2R8cr7V81OYYrP1w7Z73KfAwPK5h9SrEBXTzNG2y+mBwPo9xRnw==}
+    engines: {node: '>=14.21.3'}
+    hasBin: true
+
+  '@biomejs/cli-darwin-arm64@2.5.14':
+    resolution: {integrity: sha512-UnzaXO65L4tsZimFITFP2M121GyhDcWFrT3pL5ZJ5U4XcS/0L5VHYytVohdCf/gnDUFHgl2I9xnt5bV/J1kxHQ==}
+    engines: {node: '>=14.21.3'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@biomejs/cli-darwin-x64@2.5.14':
+    resolution: {integrity: sha512-kiy8qA16K93J7uvFfWi4LgjqDpnRKyePAna6A0Y4jxyUga35SYpIZ2cNWlhy0lsfgqRenCpfymnJWEZ6mgpRgA==}
+    engines: {node: '>=14.21.3'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@biomejs/cli-linux-arm64-musl@2.5.14':
+    resolution: {integrity: sha512-SJ9PrZkBnnH9dHJDnxk34vKs0GB2dbsioaft6/hPhWJ7AHpwYH83Isnhj0FSRpFkGgpVfJ1lds23ApB2czUDLQ==}
+    engines: {node: '>=14.21.3'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@biomejs/cli-linux-arm64@2.5.14':
+    resolution: {integrity: sha512-vO/9BaU1n30CiFNLx49gMTMtbCAAqlo/EqFoG0BU3deQInTbJrmXSmTQ9e3FoDZIKQnvSLDVNL4lx1ci7y1T1Q==}
+    engines: {node: '>=14.21.3'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@biomejs/cli-linux-x64-musl@2.5.14':
+    resolution: {integrity: sha512-2kI5PrMgW5dcEZYrstLPmUmCwkUwZY39rP4BN93Vxbwcs2O57LDQOktUZZYPvvspN5i0mhGr3TJtF5sU26NUWg==}
+    engines: {node: '>=14.21.3'}
+    cpu: [x64]
+    os: [linux]
+
+  '@biomejs/cli-linux-x64@2.5.14':
+    resolution: {integrity: sha512-VHZRa7CCQBUWKxNwUvHJeuW03WFRgN5NWO//SDGOitc9QIeNyfA42V9zlKm+x82xFSG9Bzi5fi+hbhm9anO8yA==}
+    engines: {node: '>=14.21.3'}
+    cpu: [x64]
+    os: [linux]
+
+  '@biomejs/cli-win32-arm64@2.5.14':
+    resolution: {integrity: sha512-pHgAFffmZtaYoxavEsWEYNvcA7NwOIjLyqw2HXyLbt16xYryX0L4fMV2u0G9ag6LNYPIoqWaWqzUcnc6rLGGXg==}
+    engines: {node: '>=14.21.3'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@biomejs/cli-win32-x64@2.5.14':
+    resolution: {integrity: sha512-oJWmBhoHsnhUKIke+0gXDX0mltJrWHA1UyHsrTlXwX0TL64ilVZAo+TYZm97baecV0esBdpzy3k96q+09JaZUQ==}
+    engines: {node: '>=14.21.3'}
+    cpu: [x64]
+    os: [win32]
 
   '@cbor-extract/cbor-extract-darwin-arm64@2.2.0':
     resolution: {integrity: sha512-P7swiOAdF7aSi0H+tHtHtr6zrpF3aAq/W9FXx5HektRvLTM2O89xCyXF3pk7pLc7QpaY7AoaE8UowVf9QBdh3w==}
@@ -700,7 +756,7 @@ packages:
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
-    deprecated: Glob versions prior to v9 are no longer supported
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   gopd@1.2.0:
     resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
@@ -936,12 +992,12 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  moldecor@https://codeload.github.com/mishatre/moldecor/tar.gz/4631ac580a8591fa94e56aec4870d6b67805926b:
-    resolution: {tarball: https://codeload.github.com/mishatre/moldecor/tar.gz/4631ac580a8591fa94e56aec4870d6b67805926b}
-    version: 1.0.0
-    engines: {node: '>=16'}
+  moldecor@https://codeload.github.com/mishatre/moldecor/tar.gz/7d35cdc90b7eb42c1cae3e85e462a7c5a65dda05:
+    resolution: {tarball: https://codeload.github.com/mishatre/moldecor/tar.gz/7d35cdc90b7eb42c1cae3e85e462a7c5a65dda05}
+    version: 2.0.0-rc.0
+    engines: {node: '>=22'}
     peerDependencies:
-      moleculer: ~0.15.0-beta1
+      moleculer: ^0.14.35 || ^0.15.0
 
   moleculer-db-adapter-sequelize@0.2.19:
     resolution: {integrity: sha512-Jds6WM9S8DinuoF0Pq7/1Nj6IaNiScXwgqtTCjcGOyglMbo4BRjK278iMAzEANobm7E5Me5eiub6bOosutnF+w==}
@@ -1051,6 +1107,7 @@ packages:
   nats@2.29.3:
     resolution: {integrity: sha512-tOQCRCwC74DgBTk4pWZ9V45sk4d7peoE2njVprMRCBXrhJ5q5cYM7i6W+Uvw2qUrcfOSnuisrX7bEx3b3Wx4QA==}
     engines: {node: '>= 14.0.0'}
+    deprecated: Package moved. Use @nats-io/transport-node from https://github.com/nats-io/nats.js
 
   negotiator@0.6.3:
     resolution: {integrity: sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==}
@@ -1134,6 +1191,7 @@ packages:
   prebuild-install@7.1.3:
     resolution: {integrity: sha512-8Mf2cbV7x1cXPUILADGI3wuhfqWvtiLA1iclTDbFRZkgRQS0NqsPZphna9V+HyTEadheuPmjaJMsbzKQFOzLug==}
     engines: {node: '>=10'}
+    deprecated: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
     hasBin: true
 
   promise-inflight@1.0.1:
@@ -1170,9 +1228,6 @@ packages:
   recursive-watch@1.1.4:
     resolution: {integrity: sha512-fWejAmdLi7B/jipBUjTLnqId+PK+573fbGNbdaNA/AiAnQAx6OYOLCGWRs0W5+PyM1rLzZSWK2f40QpHSR49PQ==}
     hasBin: true
-
-  reflect-metadata@0.2.2:
-    resolution: {integrity: sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q==}
 
   resolve-pkg-maps@1.0.0:
     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
@@ -1350,6 +1405,7 @@ packages:
   tar@6.2.1:
     resolution: {integrity: sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==}
     engines: {node: '>=10'}
+    deprecated: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   to-array@0.1.4:
     resolution: {integrity: sha512-LhVdShQD/4Mk4zXNroIQZJC+Ap3zgLcDuwEdcmLv9CCO73NWockQDwyUnW/m8VX/EElfL6FcYx7EeutN4HJA6A==}
@@ -1408,6 +1464,7 @@ packages:
 
   uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   validator@13.12.0:
@@ -1474,6 +1531,41 @@ packages:
     resolution: {integrity: sha512-8HFIh676uyGYP6wP13R/j6OJ/1HwJ46snpvzE7aHAN3Ryqh2yX6Xox2B4CUmTwwOIzlG3Bs7ocsP5dZH/R1Qbg==}
 
 snapshots:
+
+  '@biomejs/biome@2.5.14':
+    optionalDependencies:
+      '@biomejs/cli-darwin-arm64': 2.5.14
+      '@biomejs/cli-darwin-x64': 2.5.14
+      '@biomejs/cli-linux-arm64': 2.5.14
+      '@biomejs/cli-linux-arm64-musl': 2.5.14
+      '@biomejs/cli-linux-x64': 2.5.14
+      '@biomejs/cli-linux-x64-musl': 2.5.14
+      '@biomejs/cli-win32-arm64': 2.5.14
+      '@biomejs/cli-win32-x64': 2.5.14
+
+  '@biomejs/cli-darwin-arm64@2.5.14':
+    optional: true
+
+  '@biomejs/cli-darwin-x64@2.5.14':
+    optional: true
+
+  '@biomejs/cli-linux-arm64-musl@2.5.14':
+    optional: true
+
+  '@biomejs/cli-linux-arm64@2.5.14':
+    optional: true
+
+  '@biomejs/cli-linux-x64-musl@2.5.14':
+    optional: true
+
+  '@biomejs/cli-linux-x64@2.5.14':
+    optional: true
+
+  '@biomejs/cli-win32-arm64@2.5.14':
+    optional: true
+
+  '@biomejs/cli-win32-x64@2.5.14':
+    optional: true
 
   '@cbor-extract/cbor-extract-darwin-arm64@2.2.0':
     optional: true
@@ -2334,12 +2426,9 @@ snapshots:
 
   mkdirp@1.0.4: {}
 
-  moldecor@https://codeload.github.com/mishatre/moldecor/tar.gz/4631ac580a8591fa94e56aec4870d6b67805926b(moleculer@0.14.35(cbor-x@1.6.0)(debug@4.4.0)(encoding@0.1.13)(nats@2.29.3)):
+  moldecor@https://codeload.github.com/mishatre/moldecor/tar.gz/7d35cdc90b7eb42c1cae3e85e462a7c5a65dda05(moleculer@0.14.35(cbor-x@1.6.0)(debug@4.4.0)(encoding@0.1.13)(nats@2.29.3)):
     dependencies:
       moleculer: 0.14.35(cbor-x@1.6.0)(debug@4.4.0)(encoding@0.1.13)(nats@2.29.3)
-      reflect-metadata: 0.2.2
-    optionalDependencies:
-      moleculer-gateway: link:../moleculer-gateway
 
   moleculer-db-adapter-sequelize@0.2.19(moleculer@0.14.35(cbor-x@1.6.0)(debug@4.4.0)(encoding@0.1.13)(nats@2.29.3))(sequelize@6.37.6(sqlite3@5.1.7)):
     dependencies:
@@ -2525,8 +2614,6 @@ snapshots:
   recursive-watch@1.1.4:
     dependencies:
       ttl: 1.3.1
-
-  reflect-metadata@0.2.2: {}
 
   resolve-pkg-maps@1.0.0: {}
 

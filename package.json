@@ -14,6 +14,12 @@
         "src"
     ],
     "scripts": {
+        "check": "biome check .",
+        "check:fix": "biome check --write .",
+        "format": "biome format --write .",
+        "format:check": "biome format .",
+        "lint": "biome lint .",
+        "lint:fix": "biome lint --write .",
         "start": "tsx ./node_modules/moleculer/bin/moleculer-runner.mjs --config ./moleculer.config.ts -e --hot ./src/services/*.service.ts",
         "start:lab": "tsx ./node_modules/moleculer/bin/moleculer-runner.mjs --config ./moleculer.config.ts -e --hot ./src/services/lab.service.ts",
         "start:dev": "tsx ./node_modules/moleculer/bin/moleculer-runner.mjs --config ./moleculer.config.ts -e --hot"
@@ -46,6 +52,7 @@
         "yaml": "^2.7.0"
     },
     "devDependencies": {
+        "@biomejs/biome": "2.5.14",
         "@types/body-parser": "^1.19.5",
         "@types/formidable": "^3.4.5",
         "@types/lodash": "^4.17.16",
