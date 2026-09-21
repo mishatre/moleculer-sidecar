@@ -5,8 +5,9 @@ import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import kleur from 'kleur';
 import _ from 'lodash';
-import { Errors, type LoggerInstance } from 'moleculer';
+import type { Errors as ErrorsType, LoggerInstance } from 'moleculer';
 import { convertToMoleculerError, isMoleculerError, NotFoundError } from './errors.js';
+import { Errors } from './runtime/cjs-interop.js';
 import type { IncomingMessage, ServerResponse } from './types.js';
 import { parseRequestURL } from './utils/utils.js';
 
@@ -385,7 +386,7 @@ export class HttpServer {
         }
     }
 
-    private reformatError(error: Errors.MoleculerError) {
+    private reformatError(error: ErrorsType.MoleculerError) {
         return _.pick(error, ['name', 'message', 'code', 'type', 'data', 'stack']);
     }
 

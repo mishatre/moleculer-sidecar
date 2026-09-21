@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { action, defineSettings, method, service, started, stopped } from 'moldecor';
-import { type Context, Service as MoleculerService } from 'moleculer';
+import type { Context } from 'moleculer';
 import ApiGateway from 'moleculer-web';
 import { NotFoundError, ServiceUnavailableError, UnAuthorizedError } from '../errors.js';
+import { Service as MoleculerService } from '../runtime/cjs-interop.js';
+import { findAppRoot } from '../runtime/paths.js';
 import { getServer, type ServerRequest } from '../server.js';
 import type { IncomingMessage, ServerResponse } from '../types.js';
 import {
@@ -18,8 +20,11 @@ import {
 } from '../ui/auth.js';
 
 const UI_PATH = '/ui';
-const UI_DIST = fileURLToPath(new URL('../../ui/dist/', import.meta.url));
-const INDEX_FILE = `${UI_DIST}index.html`;
+// Resolved against the project root, not this module: compiled sources sit one
+// level deeper (dist/src/services) than the sources do, which would otherwise
+// point at dist/ui/dist. The packaged build stages ui/dist at the project root.
+const UI_DIST = path.join(findAppRoot(), 'ui', 'dist');
+const INDEX_FILE = path.join(UI_DIST, 'index.html');
 
 type Middleware = (
     req: IncomingMessage,

@@ -1,6 +1,7 @@
 import { method, service } from 'moldecor';
-import { type Context, Service as MoleculerService } from 'moleculer';
+import type { Context } from 'moleculer';
 import { ERR_INVALID_TOKEN, ERR_NO_TOKEN, UnAuthorizedError } from '../errors.js';
+import { Service as MoleculerService } from '../runtime/cjs-interop.js';
 import type { IncomingMessage } from '../types.js';
 
 @service({

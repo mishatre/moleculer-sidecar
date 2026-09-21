@@ -1,6 +1,7 @@
 import { action, defineSettings, service, started } from 'moldecor';
-import { type Context, Service as MoleculerService } from 'moleculer';
+import type { Context } from 'moleculer';
 import { parse } from 'yaml';
+import { Service as MoleculerService } from '../runtime/cjs-interop.js';
 
 const settings = defineSettings({});
 

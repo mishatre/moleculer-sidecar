@@ -3,8 +3,7 @@ import bodyParser, { type BodyParser } from 'body-parser';
 import { isStream } from 'is-stream';
 import _ from 'lodash';
 import { action, created, defineSettings, method, service, started, stopped } from 'moldecor';
-import { type CallingOptions, type Context, Errors, Service as MoleculerService } from 'moleculer';
-import { is } from 'type-is';
+import type { CallingOptions, Context } from 'moleculer';
 import {
     convert1CErrorToMoleculerError,
     convertToMoleculerError,
@@ -14,6 +13,7 @@ import {
     UnsupportedMediaType,
 } from '../errors.js';
 import Packet from '../packet.js';
+import { Errors, is, Service as MoleculerService } from '../runtime/cjs-interop.js';
 import {
     HttpServer,
     type ServerRequest,

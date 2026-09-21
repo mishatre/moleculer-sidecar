@@ -9,12 +9,17 @@
         }
     },
     "main": "index.js",
+    "bin": {
+        "moleculer-sidecar": "dist/cli.mjs"
+    },
     "files": [
         "dist",
         "src",
         "ui/dist"
     ],
     "scripts": {
+        "build": "pnpm run build:ui && pnpm run build:server",
+        "build:server": "node scripts/build-server.mjs",
         "build:ui": "pnpm --dir ui run build",
         "check": "biome check .",
         "check:fix": "biome check --write .",
@@ -22,7 +27,10 @@
         "format:check": "biome format .",
         "lint": "biome lint .",
         "lint:fix": "biome lint --write .",
-        "prepack": "pnpm run build:ui",
+        "prepack": "pnpm run build",
+        "package:all": "pnpm run build && node scripts/pack.mjs",
+        "package:linux": "pnpm run build && node scripts/pack.mjs --targets linux-x64",
+        "package:win": "pnpm run build && node scripts/pack.mjs --targets win-x64",
         "start": "tsx ./src/index.ts",
         "start:lab": "tsx ./src/index.ts --lab",
         "start:ui": "tsx ./src/index.ts --ui",
@@ -67,6 +75,8 @@
         "@types/node": "^22.13.10",
         "@types/type-is": "^1.6.7",
         "@types/xml2js": "^0.4.14",
+        "@yao-pkg/pkg": "^6.22.0",
+        "esbuild": "^0.28.2",
         "tsx": "^4.19.3",
         "typescript": "^5.8.2",
         "vite-plus": "0.3.3"

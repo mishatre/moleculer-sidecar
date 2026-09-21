@@ -1,7 +1,7 @@
 import type { BrokerOptions, MetricRegistry, ServiceBroker } from 'moleculer';
-import { Errors } from 'moleculer';
 
 import '@moleculer/lab';
+import { Errors } from './src/runtime/cjs-interop.js';
 
 /**
  * Moleculer ServiceBroker configuration file

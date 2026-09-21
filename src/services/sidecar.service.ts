@@ -1,13 +1,16 @@
+import path from 'node:path';
 import kleur from 'kleur';
 import _ from 'lodash';
 import { action, created, defineSettings, method, service, started, stopped } from 'moldecor';
-import { type Context, Errors, Service as MoleculerService, type ServiceSchema } from 'moleculer';
+import type { Context, ServiceSchema } from 'moleculer';
 import DbService from 'moleculer-db';
 import SequelizeDbAdapter from 'moleculer-db-adapter-sequelize';
 import Sequelize from 'sequelize';
 import { NotFoundError, ServiceUnavailableError } from '../errors.js';
 import ApiGateway from '../mixins/api-gateway.js';
 import AuthorizeMixin from '../mixins/authorize.js';
+import { Errors, Service as MoleculerService } from '../runtime/cjs-interop.js';
+import { ensureDataDir } from '../runtime/paths.js';
 import { type ServerSettings, serverSettings } from '../server.js';
 import type { AuthInfo, ConnectionInfo } from '../types.js';
 
@@ -71,7 +74,8 @@ const settings = defineSettings<Partial<Settings>>({
     mixins: [AuthorizeMixin, ApiGateway, DbService],
     adapter: new SequelizeDbAdapter({
         dialect: 'sqlite',
-        storage: './.data/publication.sqlite',
+        // See auth.service.ts: the data directory is resolved per platform.
+        storage: path.join(ensureDataDir(), 'publication.sqlite'),
         logging: false,
     }),
 

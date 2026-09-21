@@ -165,9 +165,13 @@ dist
 # rest
 *.md
 !docs/admin-ui.md
+!docs/packaging.md
 dist
 .data
 .pnpm-store
+
+# Packaging scratch: staged trees for `pnpm package:*`, probe fixtures, binaries.
+/build/
 
 eruz
 certs

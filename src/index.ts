@@ -1,12 +1,29 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import dotenv from 'dotenv';
 import kleur from 'kleur';
 import _ from 'lodash';
-import { type BrokerOptions, ServiceBroker, type ServiceSchema } from 'moleculer';
+import type { BrokerOptions, ServiceSchema } from 'moleculer';
 import { z } from 'zod';
+import { ServiceBroker } from './runtime/cjs-interop.js';
+import { loadModuleFile } from './runtime/module-loader.js';
+import { findAppRoot, isMainModule, isPackaged } from './runtime/paths.js';
+import { installUrlAwareFs } from './runtime/vfs-fs.js';
+
+// The packaged filesystem resolves path strings only, so dependencies that read
+// their own files by URL (lab's pglite reads its wasm/data that way) need the
+// argument normalised before they touch the patched fs functions.
+//
+// This has to happen *before* such a dependency is instantiated: an ES module
+// namespace snapshots `fs/promises` at load time, so anything that destructures
+// it earlier keeps the unpatched helper. That is why a dependency of this kind
+// must be imported through a runtime specifier (see `src/services/lab.service.ts`)
+// rather than as a static import, which a bundler hoists above this code.
+if (isPackaged()) {
+    installUrlAwareFs();
+}
 
 const CLI_NAME = 'moleculer-sidecar';
 const DEFAULT_CONFIG_FILE = 'moleculer.config.ts';
@@ -149,21 +166,44 @@ export function buildBrokerOptions(
     return merged;
 }
 
+/** Compiled broker config that ships inside the packaged binary, if present. */
+export function bundledConfigFile(root: string = findAppRoot()): string | undefined {
+    return ['dist/moleculer.config.mjs', 'moleculer.config.mjs']
+        .map((candidate) => path.join(root, candidate))
+        .find((candidate) => existsSync(candidate));
+}
+
 export function resolveConfigFile(
     options: CliOptions,
     env: NodeJS.ProcessEnv = process.env,
     cwd: string = process.cwd(),
 ): string {
     const requested = options.config ?? env.MOLECULER_CONFIG?.trim();
-    const file = requested ? path.resolve(requested) : path.join(cwd, DEFAULT_CONFIG_FILE);
-    if (!existsSync(file)) {
-        throw new Error(`config file not found: ${file}`);
+    if (requested) {
+        const file = path.resolve(requested);
+        if (!existsSync(file)) {
+            throw new Error(`config file not found: ${file}`);
+        }
+        return file;
     }
-    return file;
+
+    const local = path.join(cwd, DEFAULT_CONFIG_FILE);
+    if (existsSync(local)) {
+        return local;
+    }
+
+    // A packaged binary falls back to the config compiled into it; that only
+    // applies when the caller supplied neither --config nor the env var.
+    const bundled = bundledConfigFile();
+    if (bundled) {
+        return bundled;
+    }
+
+    throw new Error(`config file not found: ${local}`);
 }
 
 export async function loadBrokerConfig(file: string): Promise<BrokerOptions> {
-    const module = (await import(pathToFileURL(file).href)) as { default?: unknown };
+    const module = (await loadModuleFile(file)) as { default?: unknown };
     const content = module.default;
 
     if (content == null) {
@@ -187,7 +227,9 @@ async function loadService(load: () => Promise<unknown>): Promise<ServiceSchema>
 }
 
 function readVersion(): string {
-    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+    // Compiled output sits one level deeper than the sources, so the manifest is
+    // located instead of counted relative to this module.
+    const pkg = JSON.parse(readFileSync(path.join(findAppRoot(), 'package.json'), 'utf8')) as {
         version?: string;
     };
     return pkg.version ?? '0.0.0';
@@ -215,7 +257,8 @@ export function usageText(): string {
     return `Usage: ${CLI_NAME} [options]
 
 Options:
-  -c, --config <file>       Broker config file [default: ./${DEFAULT_CONFIG_FILE}]
+  -c, --config <file>       Broker config file [default: ./${DEFAULT_CONFIG_FILE},
+                            or the config bundled into the binary]
                             [env: MOLECULER_CONFIG]
   -E, --envfile <file>      Env file to load [default: ./${DEFAULT_ENV_FILE} when present]
       --lab                 Start the lab monitoring agent [env: LAB]
@@ -278,16 +321,79 @@ export async function main(
     return broker;
 }
 
-const entryPath = process.argv[1] ? path.resolve(process.argv[1]) : '';
-const modulePath = fileURLToPath(import.meta.url);
-const isEntryPoint =
-    process.platform === 'win32'
-        ? entryPath.toLowerCase() === modulePath.toLowerCase()
-        : entryPath === modulePath;
+/** How long a stop request may take before the process exits regardless. */
+const SHUTDOWN_TIMEOUT_MS = 15 * 1000;
 
-if (isEntryPoint) {
-    main().catch((error: unknown) => {
+/**
+ * Stops the broker and exits. Service managers (NSSM, systemd, launchd) ask for
+ * a stop by sending a console signal, so the process has to answer it instead of
+ * being killed mid-flight.
+ */
+export async function stopBroker(
+    broker: ServiceBroker,
+    exit: (code: number) => void = (code) => process.exit(code),
+): Promise<void> {
+    const forcedExit = setTimeout(() => {
+        log('shutdown timed out, exiting anyway');
+        exit(1);
+    }, SHUTDOWN_TIMEOUT_MS);
+    forcedExit.unref();
+
+    try {
+        await broker.stop();
+        clearTimeout(forcedExit);
+        log(`stopped ${broker.nodeID}`);
+        exit(0);
+    } catch (error: unknown) {
+        clearTimeout(forcedExit);
         console.error(`${kleur.grey(`[${CLI_NAME}]`)} ${kleur.red(formatError(error))}`);
-        process.exit(1);
-    });
+        exit(1);
+    }
+}
+
+/** Installs the stop signals once the broker is running. */
+export function installShutdownHandlers(broker: ServiceBroker): void {
+    let stopping = false;
+    const handle = (signal: NodeJS.Signals) => {
+        if (stopping) {
+            return;
+        }
+        stopping = true;
+        log(`received ${signal}, stopping ${broker.nodeID}...`);
+        void stopBroker(broker);
+    };
+
+    const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
+    if (process.platform === 'win32') {
+        signals.push('SIGBREAK');
+    }
+
+    for (const signal of signals) {
+        process.on(signal, () => handle(signal));
+    }
+}
+
+/**
+ * Runs the CLI and wires up the stop signals. Shared by the source entry point
+ * and the packaged bundle (src/cli.ts), which never needs the entry check.
+ */
+export function runCli(): void {
+    main()
+        .then((broker) => {
+            if (broker) {
+                installShutdownHandlers(broker);
+            }
+        })
+        .catch((error: unknown) => {
+            console.error(`${kleur.grey(`[${CLI_NAME}]`)} ${kleur.red(formatError(error))}`);
+            process.exit(1);
+        });
+}
+
+// A packaged binary is always the entry point: its argv[1] points into the
+// snapshot while this module is the executable itself.
+const thisFile = fileURLToPath(import.meta.url);
+
+if (isPackaged() || isMainModule(thisFile)) {
+    runCli();
 }

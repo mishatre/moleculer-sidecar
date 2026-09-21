@@ -1,11 +1,14 @@
 import { randomBytes } from 'node:crypto';
+import path from 'node:path';
 import kleur from 'kleur';
 import { action, defineSettings, method, service, started } from 'moldecor';
-import { type Context, Errors, Service as MoleculerService } from 'moleculer';
+import type { Context } from 'moleculer';
 import DbService from 'moleculer-db';
 import SequelizeDbAdapter from 'moleculer-db-adapter-sequelize';
 import Sequelize from 'sequelize';
 import { NotFoundError } from '../errors.js';
+import { Errors, Service as MoleculerService } from '../runtime/cjs-interop.js';
+import { ensureDataDir } from '../runtime/paths.js';
 import type { IncomingMessage } from '../types.js';
 import { parseReqSigV4, validateMessage } from '../utils/aws-signature.js';
 
@@ -78,7 +81,9 @@ function generateRandomString(length: number, charset: string): string {
     mixins: [DbService],
     adapter: new SequelizeDbAdapter({
         dialect: 'sqlite',
-        storage: './.data/auth.sqlite',
+        // Never cwd-relative: a packaged binary is started by a service manager
+        // whose working directory is not writable (see src/runtime/paths.ts).
+        storage: path.join(ensureDataDir(), 'auth.sqlite'),
         logging: false,
     }),
 

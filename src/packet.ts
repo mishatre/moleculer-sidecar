@@ -1,9 +1,12 @@
 import type { IncomingHttpHeaders } from 'node:http';
 import type Stream from 'node:stream';
 import { PassThrough, Readable, type Transform } from 'node:stream';
-import { Busboy } from '@fastify/busboy';
+import busboy from '@fastify/busboy';
 import FormData from 'form-data';
 import type { Context, ServiceBroker } from 'moleculer';
+
+// @fastify/busboy is CommonJS; see src/runtime/cjs-interop.ts.
+const { Busboy } = busboy;
 
 interface IBucket<T> extends AsyncGenerator<T, never, unknown> {
     push(v: T): void;

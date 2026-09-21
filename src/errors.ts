@@ -1,5 +1,8 @@
-import { Errors } from 'moleculer';
-import { parseStringPromise } from 'xml2js';
+import type { Errors as ErrorsType } from 'moleculer';
+import xml2js from 'xml2js';
+import { Errors } from './runtime/cjs-interop.js';
+
+const { parseStringPromise } = xml2js;
 
 export const ERR_NO_TOKEN = 'NO_TOKEN';
 export const ERR_INVALID_TOKEN = 'INVALID_TOKEN';
@@ -162,13 +165,13 @@ export class RequestRejectedError extends Errors.MoleculerRetryableError {
     }
 }
 
-export function isMoleculerError(error: unknown): error is Errors.MoleculerError {
+export function isMoleculerError(error: unknown): error is ErrorsType.MoleculerError {
     return error instanceof Errors.MoleculerError;
 }
 
-export function convertToMoleculerError(error: unknown): Errors.MoleculerError {
+export function convertToMoleculerError(error: unknown): ErrorsType.MoleculerError {
     if (!(error instanceof Errors.MoleculerError)) {
-        const e = error as Errors.MoleculerError;
+        const e = error as ErrorsType.MoleculerError;
         const err = new Errors.MoleculerError(
             e.message,
             e.code || (e as any).status,
