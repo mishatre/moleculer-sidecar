@@ -120,79 +120,6 @@ export default class SidecarService extends MoleculerService<typeof settings> {
     private adapter!: SequelizeDbAdapter & { db: Sequelize.Sequelize };
     declare protected send: ApiGateway['send'];
 
-    // @action({ name: 'info' })
-    // public info(ctx: Context) {
-    //     console.log(ctx.stream);
-    // }
-
-    @method
-    private async call<R>(
-        actionName: string,
-        params: object,
-        connection: ConnectionInfo & AuthInfo,
-        opts = {},
-    ) {
-        const ctx = this.broker.ContextFactory.create(
-            this.broker,
-            null as any,
-            params,
-            opts,
-        ) as Context<RegisterParams, object, { connection: ConnectionInfo & AuthInfo }>;
-
-        ctx.action = { name: actionName };
-
-        ctx.locals = {
-            connection,
-        };
-        return (await this.send<R>(ctx)) as R;
-    }
-
-    @method
-    protected async request(ctx: Context) {
-        if (ctx.action) {
-            const endpoint = this.broker.findNextActionEndpoint(ctx.action, ctx.options, ctx);
-            if (endpoint instanceof Error) {
-                if (endpoint instanceof Errors.ServiceNotFoundError) {
-                    throw new ServiceUnavailableError();
-                }
-                throw endpoint;
-            }
-            ctx.endpoint = endpoint;
-            ctx.action = endpoint;
-
-            if (ctx.options.parentCtx!.span) {
-                ctx.options.parentCtx!.span.name = `action '${ctx.action.name}' [${
-                    ctx.options.parentCtx!.span.name
-                }]`;
-            }
-
-            // Call the action
-            return await ctx.call(endpoint as unknown as string, ctx.params, {
-                ...ctx.options,
-                stream: ctx.stream as any,
-                ctx,
-            });
-        } else if (ctx.eventType) {
-            if (ctx.eventType === 'emit') {
-                if (ctx.options.parentCtx!.span) {
-                    ctx.options.parentCtx!.span.name = `event '${ctx.eventName}' [${
-                        ctx.options.parentCtx!.span.name
-                    }]`;
-                }
-
-                this.broker.emit(ctx.eventName!, ctx.params, {
-                    ...ctx.options,
-                    groups: ctx.eventGroups,
-                });
-            } else if (ctx.eventType === 'broadcast') {
-                this.broker.broadcast(ctx.eventName!, ctx.params, {
-                    groups: ctx.eventGroups,
-                });
-            }
-        }
-        return undefined;
-    }
-
     @action({
         name: 'register',
         params: {
@@ -311,6 +238,75 @@ export default class SidecarService extends MoleculerService<typeof settings> {
         return this.call(ctx.params.action, ctx.params.params, ctx.params.nodeInfo);
     }
 
+    @method
+    private async call<R>(
+        actionName: string,
+        params: object,
+        connection: ConnectionInfo & AuthInfo,
+        opts = {},
+    ) {
+        const ctx = this.broker.ContextFactory.create(
+            this.broker,
+            null as any,
+            params,
+            opts,
+        ) as Context<RegisterParams, object, { connection: ConnectionInfo & AuthInfo }>;
+
+        ctx.action = { name: actionName };
+
+        ctx.locals = {
+            connection,
+        };
+        return (await this.send<R>(ctx)) as R;
+    }
+
+    @method
+    protected async request(ctx: Context) {
+        if (ctx.action) {
+            const endpoint = this.broker.findNextActionEndpoint(ctx.action, ctx.options, ctx);
+            if (endpoint instanceof Error) {
+                if (endpoint instanceof Errors.ServiceNotFoundError) {
+                    throw new ServiceUnavailableError();
+                }
+                throw endpoint;
+            }
+            ctx.endpoint = endpoint;
+            ctx.action = endpoint;
+
+            if (ctx.options.parentCtx!.span) {
+                ctx.options.parentCtx!.span.name = `action '${ctx.action.name}' [${
+                    ctx.options.parentCtx!.span.name
+                }]`;
+            }
+
+            // Call the action
+            return await ctx.call(endpoint as unknown as string, ctx.params, {
+                ...ctx.options,
+                stream: ctx.stream as any,
+                ctx,
+            });
+        } else if (ctx.eventType) {
+            if (ctx.eventType === 'emit') {
+                if (ctx.options.parentCtx!.span) {
+                    ctx.options.parentCtx!.span.name = `event '${ctx.eventName}' [${
+                        ctx.options.parentCtx!.span.name
+                    }]`;
+                }
+
+                this.broker.emit(ctx.eventName!, ctx.params, {
+                    ...ctx.options,
+                    groups: ctx.eventGroups,
+                });
+            } else if (ctx.eventType === 'broadcast') {
+                this.broker.broadcast(ctx.eventName!, ctx.params, {
+                    groups: ctx.eventGroups,
+                });
+            }
+        }
+        return undefined;
+    }
+
+    @method
     private convertSidecarService(service: ServiceSchema, connection: any) {
         const schema = _.cloneDeep(service);
 

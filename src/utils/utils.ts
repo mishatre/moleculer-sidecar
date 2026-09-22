@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { join } from 'node:path/posix';
 import type { ConnectionInfo } from '../types.js';
 
@@ -25,4 +26,15 @@ export function buildUrl(connection: ConnectionInfo) {
     url.pathname = join(connection.path ?? '', 'hs/moleculer/sidecar');
 
     return url;
+}
+
+export function randomString(length: number, charset: string): string {
+    const charsetLength = charset.length;
+    const bytes = randomBytes(length);
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        // Use modulo to pick a character index from the charset
+        result += charset[bytes[i] % charsetLength];
+    }
+    return result;
 }

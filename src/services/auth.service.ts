@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto';
 import kleur from 'kleur';
 import { action, defineSettings, method, service, started } from 'moldecor';
 import type { Context } from 'moleculer';
@@ -10,6 +9,7 @@ import { Errors, Service as MoleculerService } from '../runtime/cjs-interop.js';
 import { getPgliteConnection } from '../runtime/pglite.js';
 import type { IncomingMessage } from '../types.js';
 import { parseReqSigV4, validateMessage } from '../utils/aws-signature.js';
+import { randomString } from '../utils/utils.js';
 
 const settings = defineSettings({});
 
@@ -50,20 +50,9 @@ function generateAccessCredentials(options: CredentialsOptions = {}) {
     } = options;
 
     return {
-        accessKey: generateRandomString(accessKeyLength, charset),
-        secretKey: generateRandomString(secretKeyLength, charset),
+        accessKey: randomString(accessKeyLength, charset),
+        secretKey: randomString(secretKeyLength, charset),
     };
-}
-
-function generateRandomString(length: number, charset: string): string {
-    const charsetLength = charset.length;
-    const bytes = randomBytes(length);
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        // Use modulo to pick a character index from the charset
-        result += charset[bytes[i] % charsetLength];
-    }
-    return result;
 }
 
 @service({
@@ -119,6 +108,7 @@ function generateRandomString(length: number, charset: string): string {
 })
 export default class SidecarAuthService extends MoleculerService<typeof settings> {
     private adapter!: SequelizeDbAdapter & { db: Sequelize.Sequelize };
+
     @action({
         name: 'verifyRequest',
         params: {

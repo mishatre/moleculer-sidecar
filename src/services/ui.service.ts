@@ -175,20 +175,6 @@ export default class UiService extends MoleculerService<typeof settings> {
         return { ok: true };
     }
 
-    @started
-    public started() {
-        this.indexHtml = readIndexHtml();
-        this.unmount = getServer().mount(UI_PATH, (request) => this.handleRequest(request), {
-            slashRedirect: true,
-        });
-    }
-
-    @stopped
-    public stopped() {
-        this.unmount?.();
-        this.unmount = undefined;
-    }
-
     @method
     private handleRequest({ req, res, path }: ServerRequest) {
         assertUiAccess(req, res, this.settings.auth, path);
@@ -234,6 +220,20 @@ export default class UiService extends MoleculerService<typeof settings> {
 
     private get server() {
         return getServer();
+    }
+
+    @started
+    public started() {
+        this.indexHtml = readIndexHtml();
+        this.unmount = getServer().mount(UI_PATH, (request) => this.handleRequest(request), {
+            slashRedirect: true,
+        });
+    }
+
+    @stopped
+    public stopped() {
+        this.unmount?.();
+        this.unmount = undefined;
     }
 }
 
