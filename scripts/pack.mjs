@@ -9,10 +9,9 @@
  *    relative asset reads, `fs/promises`, streams and dynamic `import()` all
  *    work. The staging tree therefore gets a hoisted, symlink-free production
  *    install.
- *  - the native `sqlite3` addon must be the *target* platform's prebuild.
  *  - `cbor-extract` is left out on purpose: it is an optional accelerator that
- *    `cbor-x` loads inside a try/catch, and shipping it would drag a second
- *    foreign native binary into every build.
+ *    `cbor-x` loads inside a try/catch, and shipping it would drag a foreign
+ *    native binary into every build.
  */
 import { spawnSync } from 'node:child_process';
 import {
@@ -113,8 +112,8 @@ function stageSources(stage) {
 
 /**
  * Files inside the staged tree that are read at runtime but that pkg's walker
- * cannot see: our own compiled entry, the SPA, lab's dashboard, lab's embedded
- * PostgreSQL files and the dynamically located sqlite3 binding.
+ * cannot see: our own compiled entry, the SPA, lab's dashboard, and the PGlite
+ * wasm/data/extension files of every copy the install produced.
  */
 function stagedAssetGlobs(stage) {
     const assets = ['dist/*.mjs', 'ui/dist/**/*'];
@@ -129,7 +128,23 @@ function stagedAssetGlobs(stage) {
         assets.push('node_modules/@electric-sql/pglite/dist/**/*');
     }
 
-    assets.push('node_modules/sqlite3/build/Release/node_sqlite3.node');
+    // Our own PGlite copy (0.5.x) hoists to the top level; lab 1.0 pins an
+    // older 0.2.x line that pnpm nests under @moleculer/lab when both are
+    // installed. Both read their wasm/data/extension files from disk at
+    // runtime, so both dist trees must be staged.
+    const labPgliteDist = path.join(
+        stage,
+        'node_modules',
+        '@moleculer',
+        'lab',
+        'node_modules',
+        '@electric-sql',
+        'pglite',
+        'dist',
+    );
+    if (existsSync(labPgliteDist)) {
+        assets.push('node_modules/@moleculer/lab/node_modules/@electric-sql/pglite/dist/**/*');
+    }
 
     return assets;
 }
@@ -163,13 +178,7 @@ function writeStagedManifest(stage, target, options) {
         pkg: {
             targets: [TARGETS[target].pkgTarget(options.nodeMajor)],
             assets: stagedAssetGlobs(stage),
-            ignore: [
-                '**/*.md',
-                '**/*.map',
-                '**/*.d.ts',
-                // Build-only sources (the SQLite amalgamation) are never read at runtime.
-                'node_modules/sqlite3/deps/**',
-            ],
+            ignore: ['**/*.md', '**/*.map', '**/*.d.ts'],
             compress: 'Brotli',
             nativeBuild: false,
             seaConfig: { disableExperimentalSEAWarning: true },
@@ -181,16 +190,27 @@ function writeStagedManifest(stage, target, options) {
 }
 
 /**
- * Makes the staged directory its own pnpm workspace. Both native build scripts
- * are denied on purpose: `sqlite3` gets the *target* prebuild below and
- * `cbor-extract` is unused.
+ * Makes the staged directory its own pnpm workspace. The one native build
+ * script is denied on purpose: `cbor-extract` is unused.
  */
 function writeStagedWorkspace(stage) {
     writeFileSync(
         path.join(stage, 'pnpm-workspace.yaml'),
-        ['packages: []', 'allowBuilds:', '    cbor-extract: false', '    sqlite3: false', ''].join(
-            '\n',
-        ),
+        [
+            'packages: []',
+            'allowBuilds:',
+            '    cbor-extract: false',
+            'peerDependencyRules:',
+            '    ignoreMissing:',
+            '        - "@electric-sql/pglite-pgvector"',
+            '        - "@electric-sql/pglite-age"',
+            '        - "@electric-sql/pglite-pg_hashids"',
+            '        - "@electric-sql/pglite-pg_ivm"',
+            '        - "@electric-sql/pglite-pg_textsearch"',
+            '        - "@electric-sql/pglite-pg_uuidv7"',
+            '        - "@electric-sql/pglite-pgtap"',
+            '',
+        ].join('\n'),
     );
 }
 
@@ -208,40 +228,14 @@ function installProductionDependencies(stage) {
     );
 }
 
-/** Replaces whatever prebuild the host install dropped in with the target's. */
-function fetchNativeAddon(stage, target) {
-    const sqlite3Dir = path.join(stage, 'node_modules', 'sqlite3');
-    if (!existsSync(sqlite3Dir)) {
-        throw new Error('sqlite3 is missing from the staged install');
-    }
-
-    const prebuildInstall = createRequire(path.join(stage, 'package.json')).resolve(
-        'prebuild-install/package.json',
-    );
-    const bin = path.join(path.dirname(prebuildInstall), 'bin.js');
-
-    run(
-        process.execPath,
-        [bin, '-r', 'napi', '--platform', TARGETS[target].platform, '--arch', TARGETS[target].arch],
-        { cwd: sqlite3Dir },
-    );
-
-    const binding = path.join(sqlite3Dir, 'build', 'Release', 'node_sqlite3.node');
-    if (!existsSync(binding)) {
-        throw new Error(`native addon missing after prebuild-install: ${binding}`);
-    }
-    return binding;
-}
-
-/** Any other .node file in the tree is a foreign native binary we did not plan for. */
-function assertNoForeignNatives(stage, expected) {
+/** No .node file is expected at all — any one is a foreign native binary. */
+function assertNoForeignNatives(stage) {
     const natives = readdirSync(path.join(stage, 'node_modules'), {
         recursive: true,
         withFileTypes: true,
     })
         .filter((entry) => entry.isFile() && entry.name.endsWith('.node'))
-        .map((entry) => path.join(entry.parentPath ?? entry.path, entry.name))
-        .filter((file) => file !== expected);
+        .map((entry) => path.join(entry.parentPath ?? entry.path, entry.name));
 
     if (natives.length > 0) {
         throw new Error(
@@ -305,15 +299,14 @@ function main() {
         const assets = refreshStagedAssets(stage);
         console.log(`assets: ${assets.join(', ')}`);
 
-        const binding = fetchNativeAddon(stage, target);
-        assertNoForeignNatives(stage, binding);
+        assertNoForeignNatives(stage);
 
         const output = packageBinary(stage, target, options);
         const size = statSync(output).size;
 
-        // The .node file is only needed to build; keep the stage (it is
-        // gitignored) so a failing run can be inspected, but report the size of
-        // everything the user has to ship: exactly one file.
+        // Keep the stage (it is gitignored) so a failing run can be inspected,
+        // but report the size of everything the user has to ship: exactly one
+        // file.
         results.push({ target, output, size });
     }
 

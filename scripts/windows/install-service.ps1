@@ -93,11 +93,11 @@ if ($Arguments.Count -gt 0) {
 & $nssm set $ServiceName Description 'Moleculer sidecar broker (single-file build)' | Out-Null
 & $nssm set $ServiceName Start SERVICE_AUTO_START | Out-Null
 
-# DATA_DIR keeps the SQLite files out of the snapshot/cwd; the native cache is
-# where the packaged sqlite3 binding is extracted on first start.
+# DATA_DIR keeps the PGlite state out of the snapshot/cwd.
+# Known exposure (plan section 3.3): PGlite listens on TCP loopback, which every
+# local user can reach — Windows has no ACL equivalent of the Unix 0700 socket dir.
 $envPairs = @(
-    "DATA_DIR=$DataDir",
-    "PKG_NATIVE_CACHE_PATH=$(Join-Path $DataDir 'native')"
+    "DATA_DIR=$DataDir"
 )
 foreach ($key in $Environment.Keys) {
     $envPairs += "$key=$($Environment[$key])"

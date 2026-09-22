@@ -1,7 +1,6 @@
 allowBuilds:
   cbor-extract: true
   esbuild: true
-  sqlite3: true
 minimumReleaseAgeExclude:
   - moldecor@2.0.0-rc.3
 overrides:
@@ -15,3 +14,13 @@ peerDependencyRules:
     - vite
   allowedVersions:
     vite: "*"
+  ignoreMissing:
+    # pglite-socket lists these extensions as peers but they are unused here;
+    # without this pnpm 12 would auto-install all seven into the staged binary.
+    - "@electric-sql/pglite-pgvector"
+    - "@electric-sql/pglite-age"
+    - "@electric-sql/pglite-pg_hashids"
+    - "@electric-sql/pglite-pg_ivm"
+    - "@electric-sql/pglite-pg_textsearch"
+    - "@electric-sql/pglite-pg_uuidv7"
+    - "@electric-sql/pglite-pgtap"

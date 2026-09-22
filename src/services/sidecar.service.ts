@@ -1,4 +1,3 @@
-import path from 'node:path';
 import kleur from 'kleur';
 import _ from 'lodash';
 import { action, created, defineSettings, method, service, started, stopped } from 'moldecor';
@@ -10,7 +9,7 @@ import { NotFoundError, ServiceUnavailableError } from '../errors.js';
 import ApiGateway from '../mixins/api-gateway.js';
 import AuthorizeMixin from '../mixins/authorize.js';
 import { Errors, Service as MoleculerService } from '../runtime/cjs-interop.js';
-import { ensureDataDir } from '../runtime/paths.js';
+import { getPgliteConnection } from '../runtime/pglite.js';
 import { type ServerSettings, serverSettings } from '../server.js';
 import type { AuthInfo, ConnectionInfo } from '../types.js';
 
@@ -73,10 +72,16 @@ const settings = defineSettings<Partial<Settings>>({
 
     mixins: [AuthorizeMixin, ApiGateway, DbService],
     adapter: new SequelizeDbAdapter({
-        dialect: 'sqlite',
-        // See auth.service.ts: the data directory is resolved per platform.
-        storage: path.join(ensureDataDir(), 'publication.sqlite'),
+        // The database is the shared PGlite instance (src/runtime/pglite.ts); one
+        // pool connection per service, budgeted by the socket's maxConnections.
+        dialect: 'postgres',
+        host: getPgliteConnection().host,
+        port: getPgliteConnection().port,
+        database: 'postgres',
+        username: 'postgres',
+        password: 'postgres',
         logging: false,
+        pool: { max: 1 },
     }),
 
     model: {
@@ -92,10 +97,10 @@ const settings = defineSettings<Partial<Settings>>({
             path: Sequelize.STRING,
             authType: Sequelize.ENUM(...Object.values(AuthTypes)),
             username: Sequelize.STRING,
-            password: Sequelize.STRING,
+            password: Sequelize.TEXT,
         },
         options: {
-            // Options from http://docs.sequelizejs.com/manual/tutorial/models-definition.html
+            schema: 'publication',
         },
     },
 

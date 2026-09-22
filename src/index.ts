@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { ServiceBroker } from './runtime/cjs-interop.js';
 import { loadModuleFile } from './runtime/module-loader.js';
 import { findAppRoot, isMainModule, isPackaged } from './runtime/paths.js';
+import { startPglite, stopPglite } from './runtime/pglite.js';
 import { installUrlAwareFs } from './runtime/vfs-fs.js';
 
 // The packaged filesystem resolves path strings only, so dependencies that read
@@ -307,6 +308,9 @@ export async function main(
     log(`config: ${configFile}`);
 
     const broker = new ServiceBroker(brokerOptions);
+    // The socket must be listening before the service modules are imported:
+    // each DbService reads the connection details at decoration time.
+    await startPglite();
     const started: string[] = [];
     const enabled = resolveOptionalServices(options, env).map((name) => optionalServices[name]);
     for (const load of [...coreServices, ...enabled]) {
@@ -341,6 +345,7 @@ export async function stopBroker(
 
     try {
         await broker.stop();
+        await stopPglite();
         clearTimeout(forcedExit);
         log(`stopped ${broker.nodeID}`);
         exit(0);

@@ -1,5 +1,4 @@
 import { randomBytes } from 'node:crypto';
-import path from 'node:path';
 import kleur from 'kleur';
 import { action, defineSettings, method, service, started } from 'moldecor';
 import type { Context } from 'moleculer';
@@ -8,7 +7,7 @@ import SequelizeDbAdapter from 'moleculer-db-adapter-sequelize';
 import Sequelize from 'sequelize';
 import { NotFoundError } from '../errors.js';
 import { Errors, Service as MoleculerService } from '../runtime/cjs-interop.js';
-import { ensureDataDir } from '../runtime/paths.js';
+import { getPgliteConnection } from '../runtime/pglite.js';
 import type { IncomingMessage } from '../types.js';
 import { parseReqSigV4, validateMessage } from '../utils/aws-signature.js';
 
@@ -80,11 +79,16 @@ function generateRandomString(length: number, charset: string): string {
 
     mixins: [DbService],
     adapter: new SequelizeDbAdapter({
-        dialect: 'sqlite',
-        // Never cwd-relative: a packaged binary is started by a service manager
-        // whose working directory is not writable (see src/runtime/paths.ts).
-        storage: path.join(ensureDataDir(), 'auth.sqlite'),
+        // The database is the shared PGlite instance (src/runtime/pglite.ts); one
+        // pool connection per service, budgeted by the socket's maxConnections.
+        dialect: 'postgres',
+        host: getPgliteConnection().host,
+        port: getPgliteConnection().port,
+        database: 'postgres',
+        username: 'postgres',
+        password: 'postgres',
         logging: false,
+        pool: { max: 1 },
     }),
 
     model: {
@@ -97,7 +101,7 @@ function generateRandomString(length: number, charset: string): string {
             secretKey: Sequelize.STRING,
         },
         options: {
-            // Options from http://docs.sequelizejs.com/manual/tutorial/models-definition.html
+            schema: 'auth',
         },
     },
 

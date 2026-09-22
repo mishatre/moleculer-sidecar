@@ -6,8 +6,7 @@ WORKDIR /usr/src/app
 
 RUN apt-get update && apt-get install -y apt-transport-https ca-certificates curl gnupg && \
     apt-get update && \
-    apt-get -y install git python3 build-essential && \
-    ln -s /usr/bin/python3 /usr/bin/python && \
+    apt-get -y install git && \
     rm -rf /var/lib/apt/lists/* && \
     # 
     npm install --global corepack@latest

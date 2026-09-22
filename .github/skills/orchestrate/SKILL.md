@@ -17,7 +17,19 @@ This skill runs **inline in the current agent**. It does not switch agents for y
 
 ## 2. Decide whether to delegate
 
-A single understood edit needs no workers — do it and report. Create work for a specialist when independent investigation, specialist skill, or independent review actually adds value, and ask for the smallest unit that produces a checkable artifact.
+Pick a tier explicitly; record the choice in the close-out (see §6).
+
+**Tier 0 — no delegation.** The work is tiny *and* low-risk: a doc-string or
+comment fix, a one-line mechanical edit whose fix is already known, or a trivial
+single-file documentation change. Do it yourself and report.
+
+**Tier 1 — delegate.** Everything else is specialist work. Ask for the smallest
+unit that produces a checkable artifact. "I already understand it" is not by
+itself a reason to absorb Tier 1 work — if you do it yourself anyway, the
+close-out must say so and why.
+
+Neither tier waives the mandatory review: authentication, authorization,
+signatures, filesystem/VFS, or orchestration changes are always reviewed.
 
 ## 3. Split without collisions
 
@@ -51,4 +63,13 @@ Workers are stateless and cannot ask anything. Every dispatch carries all of it:
 
 ## 6. Reporting
 
-Status (done / partial / blocked); what changed as `path — why`; the commands actually run with observed results; review outcome; `graft check` freshness; and what remains incomplete or unverified. Never report success for a gate you did not run, never present an unverified claim as verified, and never let a missing check read as a passing one.
+Status (done / partial / blocked); a **Delegation** line; what changed as `path — why`; the commands actually run with observed results; review outcome; `graft check` freshness; and what remains incomplete or unverified. Never report success for a gate you did not run, never present an unverified claim as verified, and never let a missing check read as a passing one.
+
+The Delegation line makes the §2 decision checkable instead of a private
+rationalization:
+
+`Delegation: {mode: self|delegate, role: Researcher|Implementer|Tester|Reviewer|Documenter|none, why: one sentence}`
+
+`mode: self` pairs with `role: none` and is valid only for Tier 0 work, or for a
+Tier 1 task you absorbed with an explicit reason. `mode: delegate` names the
+roles actually dispatched — one line per role when several ran.

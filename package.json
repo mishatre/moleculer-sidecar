@@ -43,6 +43,8 @@
     "license": "ISC",
     "packageManager": "pnpm@12.5.1",
     "dependencies": {
+        "@electric-sql/pglite": "0.5.8",
+        "@electric-sql/pglite-socket": "0.2.11",
         "@fastify/busboy": "^3.1.1",
         "@moleculer/lab": "^1.0.0",
         "body-parser": "^1.20.3",
@@ -60,8 +62,8 @@
         "moleculer-sidecar": "link:",
         "moleculer-web": "^0.10.8",
         "nats": "^2.29.3",
+        "pg": "^8.23.0",
         "sequelize": "^6.37.6",
-        "sqlite3": "^5.1.7",
         "type-is": "^1.6.18",
         "xml2js": "^0.6.2",
         "yaml": "^2.7.0",
@@ -70,15 +72,15 @@
     "devDependencies": {
         "@biomejs/biome": "2.5.14",
         "@types/body-parser": "^1.19.5",
-        "@types/formidable": "^3.4.5",
-        "@types/lodash": "^4.17.16",
-        "@types/node": "^22.13.10",
+        "@types/formidable": "3.4.5",
+        "@types/lodash": "4.17.16",
+        "@types/node": "22.13.10",
         "@types/type-is": "^1.6.7",
         "@types/xml2js": "^0.4.14",
         "@yao-pkg/pkg": "^6.22.0",
         "esbuild": "^0.28.2",
-        "tsx": "^4.19.3",
-        "typescript": "^5.8.2",
+        "tsx": "4.19.3",
+        "typescript": "5.8.2",
         "vite-plus": "0.3.3"
     }
 }

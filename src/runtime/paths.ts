@@ -87,7 +87,7 @@ export function findAppRoot(dir: string = moduleDir(), limit = 4): string {
 }
 
 /**
- * OS default location for writable state (SQLite files, logs). A service starts
+ * OS default location for writable state (PGlite data, logs). A service starts
  * with an arbitrary working directory, so paths must never be cwd-relative there.
  */
 export function defaultDataDir(options: PathOptions = {}): string {

@@ -41,9 +41,9 @@ probe results below.
 
 1. **pkg's virtual filesystem cannot load modules through pnpm's symlinked
    `node_modules`.** With the repository's own tree, every bare specifier failed
-   at runtime (`Cannot find module 'sqlite3'`, `Cannot find package 'moleculer'`)
+   at runtime (`Cannot find package 'moleculer'`, `Cannot find module 'cbor-x'`)
    even though the archive contained the files. With a hoisted (real directory)
-   tree, `require()`/`import()` of `moleculer`, `sqlite3` and `cbor-x` all work.
+   tree, `require()`/`import()` of `moleculer` and `cbor-x` all work.
    Hence `pnpm install --node-linker=hoisted --prod --no-optional` in the stage.
 2. **Node's CommonJS named-export detection fails for dependency files inside the
    archive.** `import { ServiceBroker } from 'moleculer'` works, but
@@ -71,14 +71,16 @@ in our own sources:
 `cbor-extract` is dropped from the staged manifest (`EXCLUDED_DEPENDENCIES`): it
 is an optional accelerator that `cbor-x` loads inside a `try/catch`
 ("native module is optional"), so the pure-JS codec is used instead of shipping a
-second foreign native binary. `--no-optional` also keeps `cbor-x`'s per-platform
+foreign native binary. `--no-optional` also keeps `cbor-x`'s per-platform
 prebuild packages out of the tree.
 
-The native `sqlite3` binding is **not** built: both native build scripts are
-denied in the staged workspace (`allowBuilds: false`) and
-`prebuild-install -r napi --platform <p> --arch <a>` fetches the target's
-prebuild into `node_modules/sqlite3/build/Release/node_sqlite3.node`. A build
-fails loudly if any other `.node` file appears in the tree.
+There is **no** native addon at all: the `sqlite3` prebuild fetch
+(`prebuild-install -r napi --platform <p> --arch <a>`) was removed together with
+the dependency, and the staged install carries zero `.node` files. The staged
+workspace still denies the one remaining native build script
+(`cbor-extract: false`, unused), and the build fails loudly if a `.node` file
+appears in the tree anyway (`assertNoForeignNatives` in `scripts/pack.mjs`
+expects zero).
 
 ## What the virtual filesystem does and does not support
 
@@ -129,12 +131,8 @@ whatever the helper was at that moment. Two consequences shaped the sources:
 - `DATA_DIR` (env) selects the data directory. Without it, a packaged binary uses
   the OS location (`%ProgramData%\moleculer-sidecar`,
   `~/Library/Application Support/moleculer-sidecar`, `$XDG_DATA_HOME/moleculer-sidecar`);
-  a source checkout keeps using `./.data`. The SQLite files (`auth.sqlite`,
-  `publication.sqlite`), lab's own state (`<data>/lab`) and the extracted native
-  addon live there.
-- `PKG_NATIVE_CACHE_PATH` overrides where pkg extracts `.node` files (defaults to
-  the XDG cache / `%LOCALAPPDATA%`). Set it in the service environment so a
-  service account without a writable profile cache still works.
+  a source checkout keeps using `./.data`. The PGlite data directory
+  (`<data>/pglite`, mode `0700`) and lab's own state (`<data>/lab`) live there.
 - The default broker config is the one compiled into the binary
   (`dist/moleculer.config.mjs`); `--config`/`MOLECULER_CONFIG` still load an
   external `.js`/`.mjs`/`.cjs` file. TypeScript configs remain a source-checkout
@@ -143,9 +141,10 @@ whatever the helper was at that moment. Two consequences shaped the sources:
 - Stopping: the CLI handles `SIGINT`/`SIGTERM` (and `SIGBREAK` on Windows), stops
   the broker and exits 0, with a 15s budget before a forced exit. This is what
   makes `nssm stop` / `Stop-Service` graceful.
-- Known pre-existing behaviour (not packaging related): `broker.stop()` logs
-  `SQLITE_MISUSE: Database handle is closed` while stopping `$sidecar`; the exit
-  code is still 0. Reproduced with `tsx src/index.ts` on the unmodified sources.
+- Shutdown is clean: the `SQLITE_MISUSE: Database handle is closed` message that
+  used to appear while stopping `$sidecar` was eliminated by the PGlite
+  migration. Re-measured in the packaged-binary smoke test: `broker.stop()`
+  exits 0 with no such output.
 
 ## `--lab` runs on the embedded PostgreSQL
 
@@ -191,9 +190,9 @@ binary. If that changes, the next step is a small `open`/fd shim over the VFS
 `build/smoke-lab-pg.sh` run the binary in a clean container: CLI output, core
 services, graceful SIGINT (exit 0), the UI SPA with correct MIME types, the
 session/CSRF-protected token round trip (create → list → revoke → list), lab on
-its embedded PostgreSQL (and, separately, against an external one), the data
-directory contents, and where the native addon gets extracted. The scripts only
-need the binary copied in.
+its embedded PostgreSQL (and, separately, against an external one), and the data
+directory contents (the `0700` PGlite directory, asserted free of legacy SQLite
+files). The scripts only need the binary copied in.
 
 Cross-check the artifact itself:
 

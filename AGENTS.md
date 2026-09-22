@@ -135,7 +135,7 @@ formatting and linting stay with Biome.
 - pnpm **12.5.1** is pinned via `packageManager` (corepack shims honor it).
   Settings live in `pnpm-workspace.yaml`: a `vite@*` override that keeps every
   `vite` specifier on the Vite+ core alias, `allowBuilds` (pnpm ≥11's replacement
-  for `onlyBuiltDependencies`; `cbor-extract`, `esbuild`, `sqlite3` are `true` —
+  for `onlyBuiltDependencies`; `cbor-extract` and `esbuild` are `true` —
   unreviewed build scripts hard-fail installs, review with
   `pnpm approve-builds --all`), and a `minimumReleaseAgeExclude` entry for the
   fresh `moldecor` rc that pnpm 12's release-age policy would otherwise block.
