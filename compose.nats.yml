@@ -1,0 +1,7 @@
+
+services:
+  nats:
+    image: nats:2.10.14
+    expose:
+      - 4222
+    restart: unless-stopped

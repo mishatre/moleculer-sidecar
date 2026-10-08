@@ -3,7 +3,7 @@ import type Stream from 'node:stream';
 import { PassThrough, Readable, type Transform } from 'node:stream';
 import busboy from '@fastify/busboy';
 import FormData from 'form-data';
-import type { Context, ServiceBroker } from 'moleculer';
+import type { CallingOptions, Context, Endpoint, ServiceBroker } from 'moleculer';
 
 // @fastify/busboy is CommonJS; see src/runtime/cjs-interop.ts.
 const { Busboy } = busboy;
@@ -214,15 +214,25 @@ export default class Packet {
         } else {
             throw new Error('Unsupported moleculer context state');
         }
-        return new Packet(data, ctx.broker.nodeID, ctx.stream ?? (false as const), ctx.meta);
+        return new Packet(
+            data,
+            ctx.broker.nodeID,
+            (ctx as Context & { stream?: Stream | boolean }).stream ?? (false as const),
+            ctx.meta,
+        );
     }
 
     public toContext(broker: ServiceBroker, parentCtx: Context) {
         const payload = this.data as Payload;
 
-        const ctx = broker.ContextFactory.create(broker, undefined, payload.params, {
-            parentCtx,
-        });
+        const ctx = broker.ContextFactory.create(
+            broker,
+            undefined as unknown as Endpoint,
+            payload.params as Record<string, unknown>,
+            {
+                parentCtx,
+            },
+        );
         if ('action' in payload) {
             ctx.id = payload.id;
             ctx.action = payload.action as any;
@@ -241,8 +251,9 @@ export default class Packet {
                 ctx.options.nodeID = payload.targetNodeID;
             }
             if (this.stream !== false) {
-                ctx.stream = this.stream as Stream;
-                ctx.options.stream = this.stream;
+                (ctx as Context & { stream?: Packet['stream'] }).stream = this.stream;
+                (ctx.options as CallingOptions & { stream?: Packet['stream'] }).stream =
+                    this.stream;
             }
         } else if ('event' in payload) {
             ctx.id = payload.id;

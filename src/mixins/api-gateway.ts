@@ -73,7 +73,7 @@ export default class ApiGateway extends MoleculerService<typeof settings> {
             tags: {
                 params: ['req.url', 'req.method'],
             },
-            spanName: (ctx) => {
+            spanName: (ctx: Context) => {
                 const { req } = (ctx as Context<RestParams>).params;
                 return `${req.method} ${req.url}`;
             },

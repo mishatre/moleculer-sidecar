@@ -209,7 +209,10 @@ export default class SidecarService extends MoleculerService<typeof settings> {
                 skipInternal: true,
                 grouping: true,
             })
-            .find((service) => service.metadata.$publicationID === ctx.params.publicationID);
+            .find(
+                (service: { metadata: Record<string, unknown> }) =>
+                    service.metadata.$publicationID === ctx.params.publicationID,
+            );
         if (service) {
             this.logger.info(kleur.yellow().bold(`Destroying '${service.fullName}' service`));
             await this.broker.destroyService(service.fullName);
@@ -263,7 +266,11 @@ export default class SidecarService extends MoleculerService<typeof settings> {
     @method
     protected async request(ctx: Context) {
         if (ctx.action) {
-            const endpoint = this.broker.findNextActionEndpoint(ctx.action, ctx.options, ctx);
+            const endpoint = this.broker.findNextActionEndpoint(
+                ctx.action as unknown as string,
+                ctx.options,
+                ctx,
+            );
             if (endpoint instanceof Error) {
                 if (endpoint instanceof Errors.ServiceNotFoundError) {
                     throw new ServiceUnavailableError();
@@ -280,11 +287,15 @@ export default class SidecarService extends MoleculerService<typeof settings> {
             }
 
             // Call the action
-            return await ctx.call(endpoint as unknown as string, ctx.params, {
+            // `stream` is this sidecar's own field and moleculer's typings omit
+            // `opts.ctx` (which broker.call does read) — same object, same keys.
+            const callOpts = {
                 ...ctx.options,
-                stream: ctx.stream as any,
+                stream: (ctx as Context & { stream?: boolean }).stream,
                 ctx,
-            });
+            };
+
+            return await ctx.call(endpoint as unknown as string, ctx.params, callOpts);
         } else if (ctx.eventType) {
             if (ctx.eventType === 'emit') {
                 if (ctx.options.parentCtx!.span) {

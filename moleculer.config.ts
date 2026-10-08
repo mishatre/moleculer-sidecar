@@ -1,4 +1,4 @@
-import type { BrokerOptions, MetricRegistry, ServiceBroker } from 'moleculer';
+import type { BrokerOptions } from 'moleculer';
 
 import '@moleculer/lab';
 import { Errors } from './src/runtime/cjs-interop.js';
@@ -179,8 +179,6 @@ const brokerConfig: BrokerOptions = {
 
     // Enable action & event parameter validation. More info: https://moleculer.services/docs/0.14/validating.html
     validator: true,
-
-    errorHandler: null,
 
     // Enable/disable built-in metrics function. More info: https://moleculer.services/docs/0.14/metrics.html
     metrics: {
